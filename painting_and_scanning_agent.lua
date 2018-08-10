@@ -44,9 +44,9 @@ end
 
 function takeStep()
     l_print("START ----------------------------")
-    ore_table = {}
-    x_init = math.floor(PositionX - P/2)
-    x_end = math.floor(PositionX + P/2)
+        ore_table = {}
+    x_init = math.floor(PositionX - P/2) 
+    x_end = math.floor(PositionX + P/2) 
     x_scan = {}
     l_print("x_init "..x_init)
     l_print("x_end "..x_end)
@@ -54,17 +54,17 @@ function takeStep()
         for i = x_init,0,1 do
             table.insert(x_scan,(ENV_WIDTH-1+i))
         end    
-        for i = 1, math.floor(PositionX) do
+        for i = 0, x_end do
             table.insert(x_scan,i)
         end     
     elseif x_end > (ENV_WIDTH-1) then
-        l_print("dentro else if")
-        for i = math.floor(PositionX), (ENV_WIDTH-1) do
-            table.insert(x_scan,i)
-        end 
         for i = x_end,ENV_WIDTH,-1 do
             table.insert(x_scan,(i-ENV_WIDTH))
         end
+        for i = x_init, (ENV_WIDTH-1) do
+            table.insert(x_scan,i)
+        end 
+
     else
         for  i = x_init, x_end do 
             table.insert(x_scan,i)
@@ -81,34 +81,39 @@ function takeStep()
 
         for i = y_init,0,1 do
             table.insert(y_scan,(ENV_WIDTH-1+i))
-            l_print("table insert y init negativo  "..(ENV_WIDTH-1+i))
+      
         end    
-        for i = 1, math.floor(PositionY) do
+        for i = 0, y_end do
             table.insert(y_scan,i)
+
         end     
     elseif y_end > (ENV_WIDTH-1) then
-        for i = math.floor(PositionY), (ENV_WIDTH-1) do
-            table.insert(y_scan,i)
-        end 
         for i = y_end,ENV_WIDTH,-1 do
             table.insert(y_scan,(i-ENV_WIDTH))
+
         end
+        for i = y_init, (ENV_WIDTH-1) do
+            table.insert(y_scan,i)
+        end 
+
     else
         for  i = y_init, y_end do 
             table.insert(y_scan,i)
         end
     end
     
+    l_print("size x_scan "..#x_scan.." Size y_scan "..#y_scan)
     for i=1, #x_scan do
+       
         for j=1, #y_scan do
-		--	l_print("scanning "..x_scan(i).." "..y_scan(i))
+          --  l_print("scanning "..y_scan[j])
+		--	l_print("scanning "..x_scan[i].." "..y_scan[j])
 		   if Draw.compareColor(Map.checkColor(x_scan[i],y_scan[j]),ore_color) then
               table.insert(ore_table,{x_scan[i],y_scan[j]})
                 l_print("ore found: "..x_scan[i].." "..y_scan[j])
 		    end
         end
 	end
-    
 
 end
 
