@@ -39,6 +39,7 @@ BASEID = "baseID"
 state_to_base = false
 state_return_to_base = false
 state_pick_up = false
+state_forward_message = false
 
 -- Initialization of the agent.
 function InitializeAgent()
@@ -51,6 +52,7 @@ function InitializeAgent()
 	GridMove = true
 
 	Energy = 150                -- E
+    CurrentEnergy = Energy
     CommunicationScope = 20     -- I
     MotionCost = 5              -- Q
     MemorySize = 15             -- S
@@ -75,6 +77,8 @@ function TakeStep()
             depositOres()
         elseif state_pick_up then
             pickUpOre()
+        elseif state_forward_message then
+            forwardMessage()
         elseif state_return_to_base then
             -- Do nothing
         end
@@ -86,30 +90,31 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 	if eventDescription == FULL then
         local baseFullId = eventTable[BASEID]
         if baseFullId == BaseID then
-            DestinationX = Memory[1].x
-            DestinationY = Memory[1].y
+            state_forward_message = true
             say("Transporter #: " .. ID .. " received base full from " .. baseFullId .. " forwarding and returning to base")
-            forwardMessage(eventDescription, eventTable)
-            state_return_to_base = true
         end
 
         -- TODO: Add logic to handle coordination mode
 	end
 end
 
-function forwardMessage(eventDescription, eventTable)
+function forwardMessage(eventTable)
     local ids = getIdsInRange()
     for i=1, #ids do
         local targetID = ids[i]
-        Event.emit{targetID=targetID, description=eventDescription, table=eventTable}
+        Event.emit{targetID=targetID, description=eventDescription, table={baseID = BaseID}}}
         say("Transporter #: " .. ID .. " forwarding message to " .. targetID)
     end
+    state_return_to_base = true
+    DestinationX = Memory[1].x
+    DestinationY = Memory[1].y
 end
 
 function depositOres()
     say("Transporter #: " .. ID .. " depositing " .. OreCount .. " ores to: " .. BaseID)
     Event.emit{targetID=BaseID, description=ORE, table={ore=OreCount}}
     OreCount = 0
+    CurrentEnergy = Energy
     state_to_base = false
 end
 
