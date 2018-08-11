@@ -24,11 +24,16 @@ state_increase_scope = false
 state_waiting = false
 state_sending = false 
 map_size = ENV_WIDTH
+flag_x = true
+flag_y = true 
+
+delta_y =0 
+delta_x =0
 
 function initializeAgent()
 
 	l_debug("Enviroment : " .. ID .. " has been initialized")
-
+    Agent.changeColor{r=255}
     --Drawing the map--
 	for i = 0, ENV_WIDTH -1 do
         for j = 0, ENV_HEIGHT -1 do
@@ -67,23 +72,89 @@ function takeStep()
         --we suppose that each time that we start a new moving cycle (after finishing the seding all the messages)
         --in our memory only have the base position, we have use table.remove, 
         if memory_S[2] == nil then
-            x_rand = 115-- Stat.randomInteger(110,120)
-            y_rand = 130 --Stat.randomInteger(110,120)
+            x_rand = 12  -- Stat.randomInteger(110,120)
+            y_rand = 12  --Stat.randomInteger(110,120)
          --   l_print("xrand ".. x_rand.." y rand "..y_rand)
             --save desired position 
             table.insert(memory_S, {x_rand,y_rand})
-           l_print("memoryyy xrand ".. memory_S[2][1].." y rand "..memory_S[2][2])
+            --l_print("memoryyy xrand ".. memory_S[2][1].." y rand "..memory_S[2][2])
+
+            if PositionX < memory_S[2][1] then
+                distAB_x = memory_S[2][1] - PositionX - ENV_WIDTH
+                --l_print("distAB_x "..distAB_x)
+                distBA_x = PositionX - memory_S[2][1] 
+                --l_print("distBA_x "..distBA_x)
+            else
+                distAB_x = memory_S[2][1] - PositionX
+                --l_print("distAB_x "..distAB_x)
+                distBA_x = PositionX - memory_S[2][1] - ENV_WIDTH
+                --l_print("distBA_x "..distBA_x)
+            end
+        
+            if PositionY < memory_S[2][2] then
+                distAB_y = memory_S[2][2]-PositionY - ENV_HEIGHT
+                --l_print("disAB_y "..distAB_y)
+                distBA_y = PositionY - memory_S[2][2] 
+                --l_print("disBA_y "..distBA_y)
+            else 
+                distAB_y = memory_S[2][2]-PositionY 
+                --l_print("disAB_y "..distAB_y)
+                distBA_y = PositionY - memory_S[2][2] - ENV_HEIGHT
+                --l_print("disBA_y "..distBA_y)
+            end
+
+            if math.abs(distAB_x) < math.abs(distBA_x) then
+                if distAB_x < 0  then
+                    delta_x = -1
+                else 
+                    delta_x = 1
+                end
+            
+            else --if math.abs(distAB_x) > math.abs(distBA_x) then 
+                if distBA_x < 0 then
+                    delta_x = 1
+                else  
+                    delta_x = -1
+                end
+            end
+       
+            if math.abs(distAB_y) < math.abs(distBA_y) then
+                if distAB_y < 0   then
+                    delta_y = -1
+                else
+                    delta_y = 1
+                end
+            else -- if math.abs(distAB_y) > math.abs(distBA_y) then 
+                if distBA_y < 0  then
+                    delta_y = 1
+                else
+                    delta_y = -1
+                end
+
+        end
+
+
         else
         
             
-            PositionX = math.floor(PositionX)
-            PositionY = math.floor(PositionY)
+           PositionX = math.floor(PositionX)
+           PositionY = math.floor(PositionY)
             -- if we are not in the desired position
             if PositionX ~= memory_S[2][1] or PositionY ~= memory_S[2][2] then
-                if not Moving then
-                    local delta_y
-                    local delta_x
-                   -- l_print("BEFORE PositionX "..PositionX.." PositionY "..PositionY)
+                if not Moving then 
+
+                    --choose square
+                    if memory_S[2][1] == PositionX then 
+                        delta_x = 0
+                    end
+
+                    if memory_S[2][2]==PositionY then 
+                        delta_y = 0
+                    end
+
+                    
+
+                    l_print(" delta x "..delta_x.."delta y"..delta_y)
 
                     if PositionX > ENV_WIDTH - 2 then -- if it is 199 or bigger
                         PositionX = 0 -- make it 0
@@ -96,31 +167,19 @@ function takeStep()
                     elseif PositionY < 1  then
                         PositionY = ENV_HEIGHT -1 
                     end
-                    
-                    --choose square
-                    if memory_S[2][1] == PositionX then 
-                        delta_x = 0
-                    elseif memory_S[2][1]> PositionX then
-                        delta_x = 1 
-                    else -- memory_S[2]<PositionX 
-                        delta_x= -1
-                    end
-                    if memory_S[2][2]==PositionY then 
-                        delta_y = 0
-                    elseif memory_S[2][2]>PositionY then
-                        delta_y = 1 
-                    else --memory_S[2][2]<PositionX 
-                        delta_y= -1
-                    end
+                    l_print("after PositionX "..PositionX.." PositionY "..PositionY)
                     -- move when the square is empty
-                    if not Collision.checkCollision(PositionX+delta_x,PositionY+delta_y) then 
+                     --  if not Collision.checkCollision(PositionX+delta_x,PositionY+delta_y) then 
                         Move.to{x=PositionX+delta_x, y=PositionY+delta_y}
-                    end
+                 --   end
+
+
                 end 
             else 
                 table.remove{memory_S,2}
                 state_moving = false
-                state_scanning = true
+                l_print("position reached ")
+             --   state_scanning = true
             end
         end
     -------------------------------------------------------------------------------------------------------
