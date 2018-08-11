@@ -112,18 +112,22 @@ function forwardMessage(eventTable)
     local ids = getIdsInRange()
     for i=1, #ids do
         local targetID = ids[i]
-        Event.emit{targetID=targetID, description=eventDescription, table={baseID = BaseID}}
-        CurrentEnergy = CurrentEnergy - MessageCost
         say("Transporter #: " .. ID .. " forwarding message to " .. targetID)
+        sendMessage(targetID, eventDescription, {baseID = BaseID})
     end
     state_return_to_base = true
     DestinationX = Memory[1].x
     DestinationY = Memory[1].y
 end
 
+function sendMessage(targetID, eventDescription, eventTable)
+    CurrentEnergy = CurrentEnergy - MessageCost
+    Event.emit{targetID=targetID, description=eventDescription, table=eventTable}
+end
+
 function depositOres()
     say("Transporter #: " .. ID .. " depositing " .. OreCount .. " ores to: " .. BaseID)
-    Event.emit{targetID=BaseID, description=ORE, table={ore=OreCount}}
+    sendMessage(BaseID, ORE, {ore=OreCount})
     OreCount = 0
     CurrentEnergy = Energy
     state_to_base = false
