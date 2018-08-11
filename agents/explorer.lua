@@ -52,8 +52,8 @@ function initializeAgent()
     PositionX = 188 --ENV_WIDTH/2 
     PositionY = 192 -- ENV_HEIGHT/2 
     l_print("PositionX "..PositionX.." PositionY "..PositionY)
-    Speed = 2
-    GridMove = true
+	Speed = 2
+	GridMove = true
     Moving = true
     DestinationX = PositionX 
     DestinationY = PositionY
