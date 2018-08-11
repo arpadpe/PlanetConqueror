@@ -28,9 +28,17 @@ Utility = require "ranalib_utility"
 Agent = require "ranalib_agent"
 Shared = require "ranalib_shared"
 Event = require "ranalib_event"
+Map = require "ranalib_map"
+
+background_color = {0,0,0}
 
 ORE = "ore"
 FULL = "full"
+BASEID = "baseID"
+
+state_to_base = false
+state_return_to_base = false
+state_pick_up = false
 
 -- Initialization of the agent.
 function InitializeAgent()
@@ -41,41 +49,75 @@ function InitializeAgent()
 	PositionY = math.floor(PositionY)
 
 	GridMove = true
-	StepMultiple = 1000
 
-	OreCapacity = 100 			-- C
-	OreCount = 0
-	CommunicationScope = 20 	-- I
+	Energy = 150                -- E
+    CommunicationScope = 20     -- I
+    MotionCost = 5              -- Q
+    MemorySize = 15             -- S
+    MaxCycles = 100000          -- T
+    CarriageCapacity = 25       -- W
+    OreCount = 0
+
+    BaseID = 1
+
+    DestinationX = PositionX
+    DestinationY = PositionY
+
+    Memory = {}
+    table.insert(Memory, {x=PositionX, y=PositionY})      
 end
 
 function TakeStep()
-	if OreCount == OreCapacity then
-		sendFull()
+    if not Moving then
+        if PositionX ~= DestinationX and PositionY ~= DestinationY then
+            move() 
+        elseif state_to_base then
+            depositOres()
+        elseif state_pick_up then
+            pickUpOre()
+        elseif state_return_to_base then
+            -- Do nothing
+        end
+    end
+end
+
+function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
+
+	if eventDescription == FULL then
+        local baseFullId = eventTable[BASEID]
+        if baseFullId == BaseID then
+            DestinationX = Memory[1].x
+            DestinationY = Memory[1].y
+            say("Transporter #: " .. ID .. " received base full from " .. baseFullId .. " forwarding and returning to base")
+            forwardMessage(eventDescription, eventTable)
+            state_return_to_base = true
+        end
+
+        -- TODO: Add logic to handle coordination mode
 	end
 end
 
-function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)	
-	if eventDescription == ORE then
-		if OreCount < OreCapacity then
-			local oreNo = eventTable[ORE]
-			if OreCount + oreNo > OreCapacity then
-				OreCount = OreCapacity
-			else
-				OreCount = OreCount + oreNo
-			end
-			say("Base #: " .. ID .. " received " .. oreNo .. " ores from: " .. sourceID .. " current ore count: " .. OreCount)
-		end
-	end
+function forwardMessage(eventDescription, eventTable)
+    local ids = getIdsInRange()
+    for i=1, #ids do
+        local targetID = ids[i]
+        Event.emit{targetID=targetID, description=eventDescription, table=eventTable}
+        say("Transporter #: " .. ID .. " forwarding message to " .. targetID)
+    end
 end
 
-function sendFull()
-	say("Base #: " .. ID .. " is full, sending messages")
-	local ids = getIdsInRange()
-	for i=1, #ids do
-		local targetID = ids[i]
-		Event.emit{targetID=targetID, description=FULL, table={baseID=ID}}
-		say("Base #: " .. ID .. " sending full message to " .. targetID)
-	end
+function depositOres()
+    say("Transporter #: " .. ID .. " depositing " .. OreCount .. " ores to: " .. BaseID)
+    Event.emit{targetID=BaseID, description=ORE, table={ore=OreCount}}
+    OreCount = 0
+    state_to_base = false
+end
+
+function pickUpOre()
+    Map.modifyColor(PositionX, PositionY, background_color)
+    OreCount = OreCount + 1
+    say("Transporter #: " .. ID .. " picked up ore, current ore count: " .. OreCount)
+    state_pick_up = false
 end
 
 function getIdsInRange()
