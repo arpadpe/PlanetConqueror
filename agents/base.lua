@@ -37,7 +37,7 @@ function InitializeAgent()
 	
 	say("Agent #: " .. ID .. " : has been initialized")
 
-	PositionX = math.floor(PositionY)
+	PositionX = math.floor(PositionX)
 	PositionY = math.floor(PositionY)
 
 	GridMove = true
