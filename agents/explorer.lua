@@ -12,7 +12,7 @@ Shared = require "ranalib_shared"
 background_color = {0,0,0}
 ore_color = {255,255,0}
 
-D = 5 -- % ore
+D = 10 -- % ore
 P = 9-- minimum value scope = 3
 Y = 2 --number of transporters
 X = 2 --number of explorers 
@@ -24,8 +24,9 @@ state_increase_scope = false
 state_waiting = false
 state_sending = false 
 map_size = ENV_WIDTH
-flag_x = true
-flag_y = true 
+
+CommunicationScope = 20     -- I
+PerceptionScope = 5         -- P
 
 delta_y =0 
 delta_x =0
@@ -48,11 +49,11 @@ function initializeAgent()
     end
 
 
-    PositionX = ENV_WIDTH/2 
-    PositionY = ENV_HEIGHT/2 
+    PositionX = 188 --ENV_WIDTH/2 
+    PositionY = 192 -- ENV_HEIGHT/2 
     l_print("PositionX "..PositionX.." PositionY "..PositionY)
-	Speed = 2
-	GridMove = true
+    Speed = 2
+    GridMove = true
     Moving = true
     DestinationX = PositionX 
     DestinationY = PositionY
@@ -71,115 +72,27 @@ function takeStep()
     if state_moving then
         --we suppose that each time that we start a new moving cycle (after finishing the seding all the messages)
         --in our memory only have the base position, we have use table.remove, 
+        PositionX = math.floor(PositionX)
+        PositionY = math.floor(PositionY)
         if memory_S[2] == nil then
             x_rand = 12  -- Stat.randomInteger(110,120)
             y_rand = 12  --Stat.randomInteger(110,120)
-         --   l_print("xrand ".. x_rand.." y rand "..y_rand)
-            --save desired position 
+            
             table.insert(memory_S, {x_rand,y_rand})
-            --l_print("memoryyy xrand ".. memory_S[2][1].." y rand "..memory_S[2][2])
 
-            if PositionX < memory_S[2][1] then
-                distAB_x = memory_S[2][1] - PositionX - ENV_WIDTH
-                --l_print("distAB_x "..distAB_x)
-                distBA_x = PositionX - memory_S[2][1] 
-                --l_print("distBA_x "..distBA_x)
-            else
-                distAB_x = memory_S[2][1] - PositionX
-                --l_print("distAB_x "..distAB_x)
-                distBA_x = PositionX - memory_S[2][1] - ENV_WIDTH
-                --l_print("distBA_x "..distBA_x)
-            end
-        
-            if PositionY < memory_S[2][2] then
-                distAB_y = memory_S[2][2]-PositionY - ENV_HEIGHT
-                --l_print("disAB_y "..distAB_y)
-                distBA_y = PositionY - memory_S[2][2] 
-                --l_print("disBA_y "..distBA_y)
-            else 
-                distAB_y = memory_S[2][2]-PositionY 
-                --l_print("disAB_y "..distAB_y)
-                distBA_y = PositionY - memory_S[2][2] - ENV_HEIGHT
-                --l_print("disBA_y "..distBA_y)
-            end
-
-            if math.abs(distAB_x) < math.abs(distBA_x) then
-                if distAB_x < 0  then
-                    delta_x = -1
-                else 
-                    delta_x = 1
-                end
-            
-            else --if math.abs(distAB_x) > math.abs(distBA_x) then 
-                if distBA_x < 0 then
-                    delta_x = 1
-                else  
-                    delta_x = -1
-                end
-            end
-       
-            if math.abs(distAB_y) < math.abs(distBA_y) then
-                if distAB_y < 0   then
-                    delta_y = -1
-                else
-                    delta_y = 1
-                end
-            else -- if math.abs(distAB_y) > math.abs(distBA_y) then 
-                if distBA_y < 0  then
-                    delta_y = 1
-                else
-                    delta_y = -1
-                end
-
-        end
-
-
-        else
-        
-            
-           PositionX = math.floor(PositionX)
-           PositionY = math.floor(PositionY)
+            delta_x = get_delta_x(PositionX, x_rand)
+            delta_y = get_delta_y(PositionY, y_rand)      
+        else 
             -- if we are not in the desired position
             if PositionX ~= memory_S[2][1] or PositionY ~= memory_S[2][2] then
                 if not Moving then 
-
-                    --choose square
-                    if memory_S[2][1] == PositionX then 
-                        delta_x = 0
-                    end
-
-                    if memory_S[2][2]==PositionY then 
-                        delta_y = 0
-                    end
-
-                    
-
-                    l_print(" delta x "..delta_x.."delta y"..delta_y)
-
-                    if PositionX > ENV_WIDTH - 2 then -- if it is 199 or bigger
-                        PositionX = 0 -- make it 0
-                    elseif PositionX < 1 then -- if it is 0  
-                        PositionX = ENV_WIDTH -1 -- make it 199
-                    end		
-           
-                    if PositionY > ENV_HEIGHT -2 then 
-                        PositionY = 0
-                    elseif PositionY < 1  then
-                        PositionY = ENV_HEIGHT -1 
-                    end
-                    l_print("after PositionX "..PositionX.." PositionY "..PositionY)
-                    -- move when the square is empty
-                     --  if not Collision.checkCollision(PositionX+delta_x,PositionY+delta_y) then 
-                        Move.to{x=PositionX+delta_x, y=PositionY+delta_y}
-                 --   end
-
-
+                    advance_position(delta_x,delta_y) --returns true if move success                    
                 end 
             else 
                 table.remove{memory_S,2}
                 state_moving = false
                 l_print("position reached ")
-             --   state_scanning = true
+                state_scanning = true
             end
         end
     -------------------------------------------------------------------------------------------------------
@@ -187,11 +100,11 @@ function takeStep()
     -------------------------------------------------------------------------------------------------------
     elseif state_scanning then 
         l_print("START SCANNING ")
-        ore_table = scanning(PositionX,PositionY, "ore")
+        ore_table = scanning("ore")
 
         state_scanning = false 
 
-        if #ore_table == 0 then --list is empty increase scope
+        --[[if #ore_table == 0 then --list is empty increase scope
             state_increase_scope = true
         else --list is full -> find people
             people_ID_table = scanning(PositionX,PositionY, "people")
@@ -200,7 +113,7 @@ function takeStep()
             else -- I have a list and tranporters close to me
                 state_sending = true
             end
-        end
+        end]]
     -------------------------------------------------------------------------------------------------------
     --INCREASING SCOPE----------------------------------------------------------------------------------------------
     -------------------------------------------------------------------------------------------------------
@@ -219,15 +132,22 @@ function cleanUp()
 end
 
 
-function scanning(pos_x, pos_y, mood)
+function scanning(mode)
+    ore_table = {}
+    id_table = {}
 
-    ore_found = {}
-    people_found = {}
-    x_init = math.floor(pos_x - P/2) 
-    x_end = math.floor(pos_x + P/2) 
+    if mode == "ore" then
+        x_init = math.floor(PositionX - PerceptionScope/2) 
+        x_end = math.floor(PositionX + PerceptionScope/2) 
+        y_init =  math.floor(PositionY - PerceptionScope/2)
+        y_end = math.floor(PositionY + PerceptionScope/2)
+    elseif mode == "people" then
+        x_init = math.floor(PositionX - CommunicationScope/2) 
+        x_end = math.floor(PositionX + CommunicationScope/2) 
+        y_init =  math.floor(PositionY - CommunicationScope/2)
+        y_end = math.floor(PositionY + CommunicationScope/2)
+    end
     x_scan = {}
-    l_print("x_init "..x_init)
-    l_print("x_end "..x_end)
     if x_init < 0 then 
         for i = x_init,0,1 do
             table.insert(x_scan,(ENV_WIDTH-1+i))
@@ -248,14 +168,9 @@ function scanning(pos_x, pos_y, mood)
         end
     end 
 
-    
-    y_init = math.floor(pos_y - P/2)
-    y_end = math.floor(pos_y + P/2)
-    l_print("y_init "..y_init)
-    l_print("y_end "..y_end)
+
     y_scan = {}
     if y_init < 0 then 
-
         for i = y_init,0,1 do
             table.insert(y_scan,(ENV_WIDTH-1+i))
         end    
@@ -274,34 +189,130 @@ function scanning(pos_x, pos_y, mood)
             table.insert(y_scan,i)
         end
     end
-    
-    l_print("size x_scan "..#x_scan.." Size y_scan "..#y_scan)
-    if mood == "ore" then
+    --l_print("size x_scan "..#x_scan.." Size y_scan "..#y_scan)
+    if mode == "ore" then
+
         for i=1, #x_scan do
             for j=1, #y_scan do
+
                 if Draw.compareColor(Map.checkColor(x_scan[i],y_scan[j]),ore_color) then
-                    table.insert(ore_found,{x_scan[i],y_scan[j]})
-                   -- l_print("ore found: "..x_scan[i].." "..y_scan[j])
+                    table.insert(ore_table,{x_scan[i],y_scan[j]})
+                    --l_print("ore found: "..x_scan[i].." "..y_scan[j])
                 end
-		    end
+            end
         end
-        return ore_found
-    elseif mood == "people" then
-        people_found = {}
-       local person = {}
+        return ore_table
+    elseif mode == "people" then
         for i=1, #x_scan do
+       
             for j=1, #y_scan do
-            --    person = Collision.checkPosition(x_scan[i],y_scan[j])
-               --if #person ~= 0 then 
-               --    l_print("size .. "..#person)
-                   -- table.insert(people_found,person)
-              --  end
+			    ids = Collision.checkPosition(x_scan[i],y_scan[j])
 
-		    end
-        end
-       -- l_print("total persons "..#people_found)
-        return people_found
-
+			    for k=1, #ids do 
+		    	    table.insert(id_table, ids[k])
+		        end
+            end
+	    end
+        return id_table
     end
 
+end
+
+
+
+function get_delta_x(pos_x, x_goal)
+
+    if pos_x < x_goal then
+        distAB_x = x_goal - pos_x - ENV_WIDTH
+        --l_print("distAB_x "..distAB_x)
+        distBA_x = pos_x - x_goal
+        --l_print("distBA_x "..distBA_x)
+    else
+        distAB_x = x_goal - pos_x
+        --l_print("distAB_x "..distAB_x)
+        distBA_x = pos_x - x_goal - ENV_WIDTH
+        --l_print("distBA_x "..distBA_x)
+    end
+
+
+    if math.abs(distAB_x) < math.abs(distBA_x) then
+        if distAB_x < 0  then
+            d_x = -1
+        else 
+            d_x = 1
+        end
+    
+    else --if math.abs(distAB_x) > math.abs(distBA_x) then 
+        if distBA_x < 0 then
+            d_x = 1
+        else  
+            d_x = -1
+        end
+    end
+
+    return d_x
+
+
+end
+
+function get_delta_y(pos_y, y_goal)
+
+    if pos_y < y_goal then
+        distAB_y = y_goal-pos_y - ENV_HEIGHT
+        --l_print("disAB_y "..distAB_y)
+        distBA_y = pos_y - memory_S[2][2] 
+        --l_print("disBA_y "..distBA_y)
+    else 
+        distAB_y = y_goal-pos_y 
+        --l_print("disAB_y "..distAB_y)
+        distBA_y = pos_y -y_goal - ENV_HEIGHT
+        --l_print("disBA_y "..distBA_y)
+    end
+
+    if math.abs(distAB_y) < math.abs(distBA_y) then
+        if distAB_y < 0   then
+            d_y = -1
+        else
+            d_y = 1
+        end
+    else -- if math.abs(distAB_y) > math.abs(distBA_y) then 
+        if distBA_y < 0  then
+            d_y = 1
+        else
+            d_y = -1
+        end
+    end
+    
+    return d_y
+
+end
+
+function advance_position(d_x,d_y)
+    if memory_S[2][1] == PositionX then 
+        d_x = 0
+    end
+
+    if memory_S[2][2] == PositionY then 
+        d_y = 0
+    end
+
+    if PositionX > ENV_WIDTH - 2 then -- if it is 199 or bigger
+        PositionX = 0 -- make it 0
+    elseif PositionX < 1 then -- if it is 0  
+        PositionX = ENV_WIDTH -1 -- make it 199
+    end		
+
+    if PositionY > ENV_HEIGHT -2 then 
+        PositionY = 0
+    elseif PositionY < 1  then
+        PositionY = ENV_HEIGHT -1 
+    end
+
+    -- move when the square is empty
+    if not Collision.checkCollision(PositionX+d_x,PositionY+d_y) then 
+        Move.to{x=PositionX+d_x, y=PositionY+d_y}
+        return true
+    else 
+        return false
+    end
 end
