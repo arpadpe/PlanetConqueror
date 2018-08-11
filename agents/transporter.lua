@@ -37,7 +37,7 @@ FULL = "full"
 INIT = "init"
 BASEID = "baseID"
 
-state_initial_move = true
+state_init = true
 state_to_base = false
 state_return_to_base = false
 state_pick_up = false
@@ -62,8 +62,6 @@ function InitializeAgent()
     CarriageCapacity = 25       -- W
     OreCount = 0
 
-    BaseID = 1
-
     DestinationX = PositionX
     DestinationY = PositionY
 
@@ -72,8 +70,9 @@ function InitializeAgent()
 end
 
 function TakeStep()
-    if state_initial_move
-    if not Moving then
+    if state_init
+        -- wait for base
+    elseif not Moving then
         if PositionX ~= DestinationX and PositionY ~= DestinationY then
             move() 
         elseif state_to_base then
@@ -92,6 +91,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 
     if eventDescription == INIT then
         BaseID = sourceID
+        state_init = false
 	elseif eventDescription == FULL then
         local baseFullId = eventTable[BASEID]
         if baseFullId == BaseID then
