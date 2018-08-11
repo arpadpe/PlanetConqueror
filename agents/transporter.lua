@@ -46,7 +46,7 @@ state_forward_message = false
 -- Initialization of the agent.
 function InitializeAgent()
 	
-	say("Agent #: " .. ID .. " : has been initialized")
+	say("Transporter #: " .. ID .. " has been initialized")
 
 	PositionX = math.floor(PositionX)
 	PositionY = math.floor(PositionY)
@@ -57,6 +57,7 @@ function InitializeAgent()
     CurrentEnergy = Energy
     CommunicationScope = 20     -- I
     MotionCost = 5              -- Q
+    MessageCost = 1
     MemorySize = 15             -- S
     MaxCycles = 100000          -- T
     CarriageCapacity = 25       -- W
@@ -70,7 +71,11 @@ function InitializeAgent()
 end
 
 function TakeStep()
-    if state_init
+    if CurrentEnergy < 0 then
+        die()
+    end
+
+    if state_init then
         -- wait for base
     elseif not Moving then
         if PositionX ~= DestinationX and PositionY ~= DestinationY then
@@ -107,7 +112,8 @@ function forwardMessage(eventTable)
     local ids = getIdsInRange()
     for i=1, #ids do
         local targetID = ids[i]
-        Event.emit{targetID=targetID, description=eventDescription, table={baseID = BaseID}}}
+        Event.emit{targetID=targetID, description=eventDescription, table={baseID = BaseID}}
+        CurrentEnergy = CurrentEnergy - MessageCost
         say("Transporter #: " .. ID .. " forwarding message to " .. targetID)
     end
     state_return_to_base = true
@@ -128,6 +134,13 @@ function pickUpOre()
     OreCount = OreCount + 1
     say("Transporter #: " .. ID .. " picked up ore, current ore count: " .. OreCount)
     state_pick_up = false
+end
+
+function die()
+    say("Transporter #: " .. ID .. " died.")
+    GridMove = false
+    Collision.reinitializeGrid()
+    Agent.removeAgent(ID)
 end
 
 function getIdsInRange()

@@ -38,7 +38,7 @@ state_set_positions = true
 -- Initialization of the agent.
 function InitializeAgent()
 	
-	say("Agent #: " .. ID .. " : has been initialized")
+	say("Base #: " .. ID .. " has been initialized")
 
 	PositionX = math.floor(PositionX)
 	PositionY = math.floor(PositionY)
@@ -47,21 +47,22 @@ function InitializeAgent()
 	StepMultiple = 1000
 
 	OreCapacity = 100 			-- C
-	OreCount = 0
 	CommunicationScope = 20 	-- I
 	ExplorersNumber = 4			-- X
 	TransportersNumber = 4		-- Y
 	PerceptionScope = 8			-- P
 
+	OreCount = 0
+
 	explorers = {}
 	for i = 1, ExplorersNumber do
-		local agentID = Agent.addAgent("explorer.lua", PositionX, PositionY)
+		local agentID = Agent.addAgent("agents/explorer.lua", PositionX, PositionY)
 		table.insert(explorers, ID)
 	end
 
 	transporters = {}
 	for i = 1, TransportersNumber do
-		local agentID = Agent.addAgent("transporter.lua", PositionX, PositionY)
+		local agentID = Agent.addAgent("agents/transporter.lua", PositionX, PositionY)
 		table.insert(transporters, ID)
 	end	
 end
@@ -100,7 +101,7 @@ function inititializeRobots()
 	state_set_positions = false
 end
 
-function sendPositionToExplorer( index, totalExplorers)
+function calculatePositionForExplorer( index, totalExplorers)
 	local posTable = {}
 	if totalExplorers == 1 then
 		posTable={x=PositionX, y=PositionY}
