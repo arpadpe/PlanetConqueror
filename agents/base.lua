@@ -31,6 +31,9 @@ Event = require "ranalib_event"
 
 ORE = "ore"
 FULL = "full"
+INIT = "init"
+
+state_set_positions = true
 
 -- Initialization of the agent.
 function InitializeAgent()
@@ -46,10 +49,27 @@ function InitializeAgent()
 	OreCapacity = 100 			-- C
 	OreCount = 0
 	CommunicationScope = 20 	-- I
+	ExplorersNumber = 4			-- X
+	TransportersNumber = 4		-- Y
+	PerceptionScope = 8			-- P
+
+	explorers = {}
+	for i = 1, ExplorersNumber do
+		local agentID = Agent.addAgent("explorer.lua", PositionX, PositionY)
+		table.insert(explorers, ID)
+	end
+
+	transporters = {}
+	for i = 1, TransportersNumber do
+		local agentID = Agent.addAgent("transporter.lua", PositionX, PositionY)
+		table.insert(transporters, ID)
+	end	
 end
 
 function TakeStep()
-	if OreCount == OreCapacity then
+	if state_set_positions then
+		inititializeRobots()
+	elseif OreCount == OreCapacity then
 		sendFull()
 	end
 end
@@ -66,6 +86,49 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 			say("Base #: " .. ID .. " received " .. oreNo .. " ores from: " .. sourceID .. " current ore count: " .. OreCount)
 		end
 	end
+end
+
+function inititializeRobots()
+	for i=1, #explorers do
+		local targetID = explorers[i]
+		Event.emit{targetID=targetID, description=INIT, table=calculatePositionForExplorer(i, #explorers)}
+	end
+	for i=1, #transporters do
+		local targetID = transporters[i]
+		Event.emit{targetID=targetID, description=INIT}
+	end
+end
+
+function sendPositionToExplorer( index, totalExplorers)
+	local posTable = {}
+	if totalExplorers == 1 then
+		posTable={x=PositionX, y=PositionY}
+	elseif totalExplorers == 2 then
+		if index == 1 then
+			posTable={x=PositionX, y=PositionY + PerceptionScope % ENV_HEIGHT}
+		else
+			posTable={x=PositionX, y=PositionY - PerceptionScope % ENV_HEIGHT}
+		end
+	elseif totalExplorers == 3 then
+		if index == 1 then
+			posTable={x=PositionX + PerceptionScope % ENV_WIDTH, y=PositionY + PerceptionScope % ENV_HEIGHT}
+		elseif index == 2 then
+			posTable={x=PositionX - PerceptionScope % ENV_WIDTH, y=PositionY + PerceptionScope % ENV_HEIGHT}
+		else
+			posTable={x=PositionX, y=PositionY - PerceptionScope % ENV_HEIGHT}
+		end
+	else
+		if index % totalExplorers == 1 then
+			posTable={x=PositionX + PerceptionScope % ENV_WIDTH, y=PositionY + PerceptionScope % ENV_HEIGHT}
+		elseif index % totalExplorers == 2 then
+			posTable={x=PositionX - PerceptionScope % ENV_WIDTH, y=PositionY + PerceptionScope % ENV_HEIGHT}
+		elseif index % totalExplorers == 3 then
+			posTable={x=PositionX + PerceptionScope % ENV_WIDTH, y=PositionY - PerceptionScope % ENV_HEIGHT}
+		else
+			posTable={x=PositionX - PerceptionScope % ENV_WIDTH, y=PositionY - PerceptionScope % ENV_HEIGHT}
+		end
+	end
+	return posTable
 end
 
 function sendFull()

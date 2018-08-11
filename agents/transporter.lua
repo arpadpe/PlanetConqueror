@@ -34,8 +34,10 @@ background_color = {0,0,0}
 
 ORE = "ore"
 FULL = "full"
+INIT = "init"
 BASEID = "baseID"
 
+state_initial_move = true
 state_to_base = false
 state_return_to_base = false
 state_pick_up = false
@@ -70,6 +72,7 @@ function InitializeAgent()
 end
 
 function TakeStep()
+    if state_initial_move
     if not Moving then
         if PositionX ~= DestinationX and PositionY ~= DestinationY then
             move() 
@@ -87,7 +90,9 @@ end
 
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 
-	if eventDescription == FULL then
+    if eventDescription == INIT then
+        BaseID = sourceID
+	elseif eventDescription == FULL then
         local baseFullId = eventTable[BASEID]
         if baseFullId == BaseID then
             state_forward_message = true
