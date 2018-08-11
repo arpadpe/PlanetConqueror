@@ -97,6 +97,7 @@ function inititializeRobots()
 		local targetID = transporters[i]
 		Event.emit{targetID=targetID, description=INIT}
 	end
+	state_set_positions = false
 end
 
 function sendPositionToExplorer( index, totalExplorers)
