@@ -13,12 +13,13 @@ ore_send = {}
 people_ID_table = {}
 background_color = {0,0,0}
 ore_color = {255,255,0}
+last_package_sent = false
 
-D = 3 -- % ore
-P = 3-- minimum value scope = 3
+D = 1 -- % ore
+P = 7-- minimum value scope = 3
 Y = 2 --number of transporters
 X = 2 --number of explorers 
-MemorySize = Y + X -1
+MemorySize = 3--Y + X -2 
 memory_S = {}
 state_initial = false 
 state_moving = true
@@ -26,10 +27,14 @@ state_scanning = false
 state_increase_scope = false
 state_waiting = false
 state_sending = false 
+get_number_packages = true
+total_number_packages = 0
+count_packages = 0 
 map_size = ENV_WIDTH
 
+NumberCyclesWaiting = 0
 CommunicationScope = 20     -- I
-PerceptionScope = 2         -- P
+PerceptionScope = 5         -- P
 CostMoving = 15
 FULL = "full"
 BASEID = "baseID"
@@ -128,7 +133,7 @@ function takeStep()
         
         if memory_S[2] == nil then
             new_position = {}
-            l_print("calculating new position")
+            l_print("GOING TO NEW POSITION")
             new_position = get_new_position()
             xx = new_position.x 
             yy = new_position.y 
@@ -161,8 +166,33 @@ function takeStep()
         l_print("START SCANNING ")
         ore_table = scanning("ore")
 
-        
-        if #ore_table == 0 then --list is empty increase scope
+
+        if #ore_found ~= 0 then
+            for i = 1, #ore_table do
+                l_print("ORE IN STATE SCANNING "..i.." position x "..ore_table[i].x.." position y "..ore_table[i].y)
+                if last_package_sent then
+               
+                    ore_send[i]=nil
+
+                end
+            end 
+
+            if last_package_sent then
+                l_print("we have finish sending all packages in this positon")
+                state_scanning = false 
+                state_moving = true
+                get_number_packages = true
+                count_packages = 0
+                last_package_sent = false
+            end
+    
+        else 
+            state_moving = true 
+            state_scanning = false
+        end
+
+    
+        --[[if #ore_table == 0 then --list is empty increase scope
             l_print("ore table  = 0")
             state_increase_scope = true
             state_scanning = false 
@@ -174,7 +204,7 @@ function takeStep()
                 state_waiting = true 
             end
             state_scanning = false 
-        end
+        end]]
     -------------------------------------------------------------------------------------------------------
     --INCREASING SCOPE----------------------------------------------------------------------------------------------
     -------------------------------------------------------------------------------------------------------
@@ -225,12 +255,30 @@ function takeStep()
     -------------------------------------------------------------------------------------------------------
     elseif state_sending then
         say("SENDING POSITIONS TO TRANSPORTERS")
+        --say("number of cycles "..NumberCyclesWaiting)
+        state_sending = false 
+        state_moving = true
+
     -------------------------------------------------------------------------------------------------------
     --WAITING----------------------------------------------------------------------------------------------
     -------------------------------------------------------------------------------------------------------
     elseif state_waiting then
         say("WAITING FOR TRANSPORTERS")
-
+        distance_to_base = math.abs(PositionX - memory_S[1].x) + math.abs(PositionY - memory_S[1].y)
+        NumberCyclesWaiting = NumberCyclesWaiting + 1
+        people_ID_table = scanning("people")
+        if #people_ID_table > 1 then -- I have a list and tranporters close to me (excluding me)
+            state_sending = true
+            state_waiting = false
+            NumberCyclesWaiting = 0
+        end
+        if NumberCyclesWaiting >= distance_to_base then 
+            state_moving = true -- ¿ Maybe it's useful to do a clever movement ...  
+            state_sending = false 
+            NumberCyclesWaiting = 0
+        end
+        
+        
 
     end
 
@@ -314,18 +362,89 @@ function scanning(mode)
     end
     --l_print("size x_scan "..#x_scan.." Size y_scan "..#y_scan)
     if mode == "ore" then
-
+        total_ores = 0 
         for i=1, #x_scan do
             for j=1, #y_scan do
 
                 if Draw.compareColor(Map.checkColor(x_scan[i],y_scan[j]),ore_color) then
-                    table.insert(ore_found,{x_scan[i],y_scan[j]})
+                    table.insert(ore_found,{x = x_scan[i],y = y_scan[j]})
                     
-                    --l_print("ore found: "..x_scan[i].." "..y_scan[j])
+                    l_print("ore found: "..x_scan[i].." "..y_scan[j])
+                    total_ores = total_ores + 1 
                 end
             end
         end
-        return ore_found
+        -- GET NUMBER OF PACKAGES 
+
+        if get_number_packages then
+            if total_ores%MemorySize == 0 then --exact number of packages
+                total_number_packages = total_ores/MemorySize
+            --[[else 
+                total_number_packages = math.floor(#ore_table/MemorySize)]]
+                l_print("total number packages "..total_ores/MemorySize)
+            end 
+            
+            get_number_packages = false
+        end
+       -- RETURN ORE FOUND IN MEMORY SIZE SLOTS
+        
+        if #ore_found <= MemorySize and #ore_found ~= 0 then 
+            l_print(" we have plenty of memory")
+            last_package_sent = true
+            return ore_found
+        elseif #ore_send == 0 and #ore_found ~= 0 then 
+            l_print("first time we sent things ") 
+            for i = 1 , MemorySize do 
+                table.insert(ore_send, ore_found[i])
+            end 
+            count_packages = count_packages + 1 
+            return ore_send
+        elseif #ore_send ~= 0 and #ore_found ~= 0 then
+            index_list = {}
+            l_print("sedond time we sent things")
+        
+            for i = 1 , MemorySize do 
+                for j = #ore_found, 1, -1 do
+                    if ore_send[i].x == ore_found[j].x and ore_send[i].y ==ore_found[j].y then 
+                       table.insert(index_list, j)
+                    end
+                end
+
+            end
+            max_index = math.max(unpack(index_list))
+            l_print("max index "..max_index)
+            index_list = nil
+            
+            
+           -- l_print("remainings "..(#ore_found - max_index))
+            if (#ore_found - max_index) < MemorySize then 
+                for i = MemorySize, (#ore_found - max_index)+1, -1 do
+                    ore_send[i]=nil--table.remove(ore_send,i)
+                end
+                for i = 1, (#ore_found - max_index) do     
+                    ore_send[i].x = ore_found[max_index + i].x
+                    ore_send[i].y = ore_found[max_index + i].y
+                end 
+                last_package_sent = true
+            else
+
+                for i = 1, MemorySize do
+                    ore_send[i].x = ore_found[max_index + i].x
+                    ore_send[i].y = ore_found[max_index + i].y
+
+                end
+
+                count_packages = count_packages + 1 
+                if count_packages ==total_number_packages then 
+                    last_package_sent = true 
+                end
+
+
+
+            end
+            return ore_send
+        end
+        
     elseif mode == "people" then
         for i=1, #x_scan do
        
@@ -334,7 +453,7 @@ function scanning(mode)
 
 			    for k=1, #ids do 
                     table.insert(id_table, ids[k])
-                    l_print("id found "..ids[k])
+                  --  l_print("id found "..ids[k])
 		        end
             end
 	    end
