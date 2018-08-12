@@ -48,6 +48,8 @@ function InitializeAgent()
 	
 	say("Transporter #: " .. ID .. " has been initialized")
 
+    Agent.changeColor{b=255}
+
 	PositionX = math.floor(PositionX)
 	PositionY = math.floor(PositionY)
 
@@ -97,24 +99,28 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
     if eventDescription == INIT then
         BaseID = sourceID
         state_init = false
-	elseif eventDescription == FULL then
+        say("Transporter #: " .. ID .. " received init from " .. sourceID)
+	elseif eventDescription == FULL and not (state_return_to_base or state_forward_message) then
         local baseFullId = eventTable[BASEID]
         if baseFullId == BaseID then
             state_forward_message = true
-            say("Transporter #: " .. ID .. " received base full from " .. baseFullId .. " forwarding and returning to base")
+            say("Transporter #: " .. ID .. " received base full for " .. baseFullId .. " forwarding and returning to base")
         end
 
         -- TODO: Add logic to handle coordination mode
 	end
 end
 
-function forwardMessage(eventTable)
+function forwardMessage()
     local ids = getIdsInRange()
     for i=1, #ids do
         local targetID = ids[i]
-        say("Transporter #: " .. ID .. " forwarding message to " .. targetID)
-        sendMessage(targetID, eventDescription, {baseID = BaseID})
+        if targetID ~= ID then
+            say("Transporter #: " .. ID .. " forwarding message to " .. targetID)
+            sendMessage(targetID, FULL, {baseID = BaseID})
+        end
     end
+    state_forward_message = false
     state_return_to_base = true
     DestinationX = Memory[1].x
     DestinationY = Memory[1].y
