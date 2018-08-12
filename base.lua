@@ -33,6 +33,8 @@ ORE = "ore"
 FULL = "full"
 INIT = "init"
 
+ROBOTS = "robots"
+
 state_set_positions = true
 
 -- Initialization of the agent.
@@ -64,7 +66,9 @@ function InitializeAgent()
 	for i = 1, TransportersNumber do
 		local agentID = Agent.addAgent("agents/transporter.lua", PositionX, PositionY)
 		table.insert(transporters, agentID)
-	end	
+	end
+
+	ShareTable()
 end
 
 function TakeStep()
@@ -205,4 +209,13 @@ function getIdsInRange()
 	end
  
 	return id_table
+end
+
+function ShareTable()
+	local robotsTable = Shared.getTable(ROBOTS)
+	if robotsTable == nil then
+		robotsTable = {}
+	end
+	robotsTable[ID] = {explorers=explorers, transporters=transporters}
+	Shared.storeTable(ROBOTS, robotsTable)
 end
