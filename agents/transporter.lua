@@ -42,6 +42,7 @@ state_to_base = false
 state_return_to_base = false
 state_pick_up = false
 state_forward_message = false
+state_moving = false
 
 -- Initialization of the agent.
 function InitializeAgent()
@@ -68,8 +69,7 @@ function InitializeAgent()
     DestinationX = PositionX
     DestinationY = PositionY
 
-    Memory = {}
-    table.insert(Memory, {x=PositionX, y=PositionY})      
+    Memory = {}     
 end
 
 function TakeStep()
@@ -80,8 +80,8 @@ function TakeStep()
     if state_init then
         -- wait for base
     elseif not Moving then
-        if PositionX ~= DestinationX and PositionY ~= DestinationY then
-            move() 
+        if state_moving then
+            move()
         elseif state_to_base then
             depositOres()
         elseif state_pick_up then
@@ -100,6 +100,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
         BaseID = sourceID
         state_init = false
         say("Transporter #: " .. ID .. " received init from " .. sourceID)
+        table.insert(Memory, {x=sourceX, y=sourceY}) 
 	elseif eventDescription == FULL and not (state_return_to_base or state_forward_message) then
         local baseFullId = eventTable[BASEID]
         if baseFullId == BaseID then
@@ -120,10 +121,10 @@ function forwardMessage()
             sendMessage(targetID, FULL, {baseID = BaseID})
         end
     end
+    Memory[2] = Memory[1]
+    state_moving = true
     state_forward_message = false
     state_return_to_base = true
-    DestinationX = Memory[1].x
-    DestinationY = Memory[1].y
 end
 
 function sendMessage(targetID, eventDescription, eventTable)
@@ -144,6 +145,9 @@ function pickUpOre()
     OreCount = OreCount + 1
     say("Transporter #: " .. ID .. " picked up ore, current ore count: " .. OreCount)
     state_pick_up = false
+    if Memory[2] ~= nil then
+        state_moving = true
+    end
 end
 
 function die()
@@ -178,7 +182,7 @@ function getIdsInRange()
         end
     end 
 
-    y_init =  math.floor(PositionY - CommunicationScope/2)
+    y_init = math.floor(PositionY - CommunicationScope/2)
     y_end = math.floor(PositionY + CommunicationScope/2)
     y_scan = {}
     if y_init < 0 then 
@@ -213,4 +217,129 @@ function getIdsInRange()
 	end
  
 	return id_table
+end
+
+function move()
+    local delta_x = get_delta_x(PositionX, Memory[2].x)
+    local delta_y = get_delta_y(PositionY, Memory[2].y)
+
+    if advance_position(delta_x, delta_y) then
+        CurrentEnergy = CurrentEnergy - MotionCost
+        if PositionX == Memory[2].x and PositionY == Memory[2].y then
+            shiftMemory()
+            state_moving = false
+        end
+    end
+end
+
+function shiftMemory()
+    local j = 2
+    for i=2,#Memory-1 do
+        if Memory[i + 1] == nil then break end 
+        Memory[i] = Memory[i+1]
+        j = i
+    end
+    Memory[j] = nil
+end
+
+function get_delta_x(pos_x, x_goal)
+
+    if pos_x < x_goal then
+        distAB_x = x_goal - pos_x - ENV_WIDTH
+        --l_print("distAB_x "..distAB_x)
+        distBA_x = pos_x - x_goal
+        --l_print("distBA_x "..distBA_x)
+    else
+        distAB_x = x_goal - pos_x
+        --l_print("distAB_x "..distAB_x)
+        distBA_x = pos_x - x_goal - ENV_WIDTH
+        --l_print("distBA_x "..distBA_x)
+    end
+
+
+    if math.abs(distAB_x) < math.abs(distBA_x) then
+        if distAB_x < 0  then
+            d_x = -1
+        else 
+            d_x = 1
+        end
+    
+    else --if math.abs(distAB_x) > math.abs(distBA_x) then 
+        if distBA_x < 0 then
+            d_x = 1
+        else  
+            d_x = -1
+        end
+    end
+  --  l_print("delta x "..d_x)
+    return d_x
+
+
+end
+
+function get_delta_y(pos_y, y_goal)
+
+    if pos_y < y_goal then
+        distAB_y = y_goal - pos_y - ENV_HEIGHT
+        --l_print("disAB_y "..distAB_y)
+        distBA_y = pos_y - y_goal 
+        --l_print("disBA_y "..distBA_y)
+    else 
+        distAB_y = y_goal-pos_y 
+        --l_print("disAB_y "..distAB_y)
+        distBA_y = pos_y -y_goal - ENV_HEIGHT
+        --l_print("disBA_y "..distBA_y)
+    end
+
+    if math.abs(distAB_y) < math.abs(distBA_y) then
+        if distAB_y < 0   then
+            d_y = -1
+        else
+            d_y = 1
+        end
+    else -- if math.abs(distAB_y) > math.abs(distBA_y) then 
+        if distBA_y < 0  then
+            d_y = 1
+        else
+            d_y = -1
+        end
+    end
+  --  l_print("delta y "..d_y)
+    return d_y
+
+end
+
+function advance_position(d_x,d_y)
+    if Memory[1].x == PositionX then 
+        d_x = 0
+   --     l_print("dx = 0")
+    end
+
+    if Memory[1].y == PositionY then 
+        d_y = 0
+ --       l_print("dy = 0")
+    end
+
+    if PositionX > ENV_WIDTH - 2 then -- if it is 199 or bigger
+        PositionX = 0 -- make it 0
+    elseif PositionX < 1 then -- if it is 0  
+        PositionX = ENV_WIDTH -1 -- make it 199
+    end     
+
+    if PositionY > ENV_HEIGHT -2 then 
+        PositionY = 0
+    elseif PositionY < 1  then
+        PositionY = ENV_HEIGHT -1 
+    end
+    
+    l_print("pos X "..d_x.." pos y "..d_y) 
+
+    -- move when the square is empty
+    if not Collision.checkCollision(PositionX+d_x,PositionY+d_y) then
+        l_print("moving to pos X "..PositionX+d_x.." pos y "..PositionY+d_y)
+        Move.to{x=PositionX+d_x, y=PositionY+d_y}
+        return true
+    else 
+        return false
+    end
 end
