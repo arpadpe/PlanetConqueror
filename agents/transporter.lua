@@ -33,7 +33,6 @@ Map = require "ranalib_map"
 PlanetMovement = require "modules/planet_movement"
 PlanetScanner = require "modules/planet_scanner"
 Descriptions = require "modules/event_descriptions"
-States = require "modules/transporter_states"
 
 background_color = {0,0,0}
 

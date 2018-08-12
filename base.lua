@@ -29,9 +29,8 @@ Agent = require "ranalib_agent"
 Shared = require "ranalib_shared"
 Event = require "ranalib_event"
 
-ORE = "ore"
-FULL = "full"
-INIT = "init"
+PlanetScanner = require "modules/planet_scanner"
+Descriptions = require "modules/event_descriptions"
 
 ROBOTS = "robots"
 
@@ -46,12 +45,12 @@ function InitializeAgent()
 	PositionY = math.floor(PositionY)
 
 	GridMove = true
-	StepMultiple = 1000
+	StepMultiple = 10000
 
 	OreCapacity = 100 			-- C
 	CommunicationScope = 50 	-- I
 	ExplorersNumber = 4			-- X
-	TransportersNumber = 2		-- Y
+	TransportersNumber = 1		-- Y
 	PerceptionScope = 8			-- P
 
 	OreCount = 0
@@ -64,7 +63,7 @@ function InitializeAgent()
 
 	transporters = {}
 	for i = 1, TransportersNumber do
-		local agentID = Agent.addAgent("agents/transporter.lua", PositionX, PositionY)
+		local agentID = Agent.addAgent("agents/transporter.lua", PositionX + i * 10, PositionY + i * 5)
 		table.insert(transporters, agentID)
 	end
 
@@ -80,9 +79,9 @@ function TakeStep()
 end
 
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)	
-	if eventDescription == ORE then
+	if eventDescription == Descriptions.ORE then
 		if OreCount < OreCapacity then
-			local oreNo = eventTable[ORE]
+			local oreNo = eventTable[Descriptions.ORE]
 			if OreCount + oreNo > OreCapacity then
 				OreCount = OreCapacity
 			else
@@ -96,12 +95,12 @@ end
 function inititializeRobots()
 	for i=1, #explorers do
 		local targetID = explorers[i]
-		Event.emit{targetID=targetID, description=INIT, table=calculatePositionForExplorer(i, #explorers)}
+		Event.emit{targetID=targetID, description=Descriptions.INIT, table=calculatePositionForExplorer(i, #explorers)}
 		say("Base #: " .. ID .. " sending init message to " .. targetID)
 	end
 	for i=1, #transporters do
 		local targetID = transporters[i]
-		Event.emit{targetID=targetID, description=INIT}
+		Event.emit{targetID=targetID, description=Descriptions.INIT}
 		say("Base #: " .. ID .. " sending init message to " .. targetID)
 	end
 	state_set_positions = false
@@ -141,74 +140,12 @@ end
 
 function sendFull()
 	say("Base #: " .. ID .. " is full, sending messages")
-	local ids = getIdsInRange()
+	local ids = PlanetScanner.get_ids_in_range(CommunicationScope)
 	for i=1, #ids do
 		local targetID = ids[i]
-		Event.emit{targetID=targetID, description=FULL, table={baseID=ID}}
+		Event.emit{targetID=targetID, description=Descriptions.FULL, table={baseID=ID}}
 		say("Base #: " .. ID .. " sending full message to " .. targetID)
 	end
-end
-
-function getIdsInRange()
-    id_table = {}
-    x_init = math.floor(PositionX - CommunicationScope/2) 
-    x_end = math.floor(PositionX + CommunicationScope/2) 
-    x_scan = {}
-    if x_init < 0 then 
-        for i = x_init,0,1 do
-            table.insert(x_scan,(ENV_WIDTH-1+i))
-        end    
-        for i = 0, x_end do
-            table.insert(x_scan,i)
-        end     
-    elseif x_end > (ENV_WIDTH-1) then
-        for i = x_end,ENV_WIDTH,-1 do
-            table.insert(x_scan,(i-ENV_WIDTH))
-        end
-        for i = x_init, (ENV_WIDTH-1) do
-            table.insert(x_scan,i)
-        end 
-    else
-        for  i = x_init, x_end do 
-            table.insert(x_scan,i)
-        end
-    end 
-
-    y_init =  math.floor(PositionY - CommunicationScope/2)
-    y_end = math.floor(PositionY + CommunicationScope/2)
-    y_scan = {}
-    if y_init < 0 then 
-        for i = y_init,0,1 do
-            table.insert(y_scan,(ENV_WIDTH-1+i))
-        end    
-        for i = 0, y_end do
-            table.insert(y_scan,i)
-        end     
-    elseif y_end > (ENV_WIDTH-1) then
-        for i = y_end,ENV_WIDTH,-1 do
-            table.insert(y_scan,(i-ENV_WIDTH))
-        end
-        for i = y_init, (ENV_WIDTH-1) do
-            table.insert(y_scan,i)
-        end 
-    else
-        for  i = y_init, y_end do 
-            table.insert(y_scan,i)
-        end
-    end
-    
-    for i=1, #x_scan do
-       
-        for j=1, #y_scan do
-			ids = Collision.checkPosition(x_scan[i],y_scan[j])
-
-			for k=1, #ids do 
-		    	table.insert(id_table, ids[k])
-		    end
-        end
-	end
- 
-	return id_table
 end
 
 function ShareTable()
