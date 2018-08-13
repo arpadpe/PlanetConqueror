@@ -10,7 +10,7 @@ Shared = require "ranalib_shared"
 background_color = {0,0,0}
 ore_color = {255,255,0}
 
-D = 5 -- % ore
+D = 100 -- % ore
 P = 12
 
 function initializeAgent()

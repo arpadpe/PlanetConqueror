@@ -47,9 +47,9 @@ function InitializeAgent()
 	GridMove = true
 	StepMultiple = 10000
 
-	OreCapacity = 100 			-- C
+	OreCapacity = 5 			-- C
 	CommunicationScope = 50 	-- I
-	ExplorersNumber = 4			-- X
+	ExplorersNumber = 1			-- X
 	TransportersNumber = 1		-- Y
 	PerceptionScope = 8			-- P
 
@@ -59,20 +59,22 @@ function InitializeAgent()
 		Agent.addAgent("painting.lua")
 	end
 
+	transporters = {}
+	for i = 1, TransportersNumber do
+		local agentID = Agent.addAgent("agents/transporter.lua", PositionX, PositionY)
+		table.insert(transporters, agentID)
+	end
+
 	explorers = {}
 	for i = 1, ExplorersNumber do
 		local agentID = Agent.addAgent("agents/explorer.lua", PositionX, PositionY)
 		table.insert(explorers, agentID)
 	end
 
-	transporters = {}
-	for i = 1, TransportersNumber do
-		local agentID = Agent.addAgent("agents/transporter.lua", PositionX + i * 10, PositionY + i * 5)
-		table.insert(transporters, agentID)
-	end
-
 	ShareTable()
 end
+
+val = true
 
 function TakeStep()
 	if state_set_positions then

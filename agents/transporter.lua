@@ -67,13 +67,23 @@ function InitializeAgent()
     CarriageCapacity = 25       -- W
     OreCount = 0
 
+    Moving = true
+
     DestinationX = PositionX
     DestinationY = PositionY
 
     Memory = {}     
 end
 
+val = true
+
 function TakeStep()
+
+    if val then
+        Move.to{x=PositionX + 1, y=PositionY}
+        val = false
+        Speed = 1
+    end
 
     if CurrentEnergy < 0 then
         die()
@@ -121,6 +131,7 @@ function TakeStep()
 end
 
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
+
 
     if eventDescription == Descriptions.INIT then
         BaseID = sourceID
