@@ -27,13 +27,22 @@ function planetMovement.get_delta_y(pos_y, y_goal)
 end
 
 function planetMovement.calc_min_dist(pos, goal, limit)
-	local distAB = goal - pos - limit
-	local distBA = pos - goal
+
+	local distAB = 0
+	local distBA = 0
+
+	if pos < goal then
+        distAB = goal - pos - ENV_WIDTH
+        distBA = pos - goal
+    else
+        distAB = goal - pos
+        distBA = pos - goal - ENV_WIDTH
+    end
 
     if math.abs(distAB) < math.abs(distBA) then
     	return distAB
     else
-    	return distBA
+    	return distBA * -1
     end
 end
 
