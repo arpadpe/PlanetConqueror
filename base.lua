@@ -55,6 +55,10 @@ function InitializeAgent()
 
 	OreCount = 0
 
+	if ID == 1 then
+		Agent.addAgent("painting.lua")
+	end
+
 	explorers = {}
 	for i = 1, ExplorersNumber do
 		local agentID = Agent.addAgent("agents/explorer.lua", PositionX, PositionY)
