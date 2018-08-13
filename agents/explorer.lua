@@ -7,6 +7,7 @@ Map = require "ranalib_map"
 Shared = require "ranalib_shared"
 Draw = require "ranalib_draw" 
 Shared = require "ranalib_shared"
+Event = require "ranalib_event"
 
 ore_table = {}
 ore_send = {}
@@ -15,41 +16,51 @@ background_color = {0,0,0}
 ore_color = {255,255,0}
 last_package_sent = false
 
-D = 1 -- % ore
+transporterID = 0
+
+D = 30 -- % ore
 P = 7-- minimum value scope = 3
 Y = 2 --number of transporters
 X = 2 --number of explorers 
 MemorySize = 3--Y + X -2 
 memory_S = {}
 state_initial = false 
-state_moving = true
+state_moving = false
 state_scanning = false
 state_increase_scope = false
 state_waiting = false
 state_sending = false 
 get_number_packages = true
+waiting_answer = false
 total_number_packages = 0
+package_accepted = false 
 count_packages = 0 
 map_size = ENV_WIDTH
 
+trans_contacted = {}
+
 NumberCyclesWaiting = 0
+NumberCyclesWaitingAnswer = 0
 CommunicationScope = 20     -- I
 PerceptionScope = 5         -- P
 CostMoving = 15
 FULL = "full"
 BASEID = "baseID"
 INIT = "init"
- 
+ORE_POS = "ore_pos"
+ACCEPT = "accept"
+ROBOTS = "robots"
+list_transporters = {}
 baseID = 0
 delta_y =0 
 delta_x =0
 
 function initializeAgent()
 
-	l_debug("Enviroment : " .. ID .. " has been initialized")
+	--l_debug("Enviroment : " .. ID .. " has been initialized")
     Agent.changeColor{r=255}
     --Drawing the map--
-	for i = 0, ENV_WIDTH -1 do
+	--[[for i = 0, ENV_WIDTH -1 do
         for j = 0, ENV_HEIGHT -1 do
             if D >= Stat.randomInteger(1,100) then
                 Map.modifyColor(i,j, ore_color)
@@ -59,13 +70,13 @@ function initializeAgent()
                Map.modifyColor(i,j, background_color)
             end
 		end
-    end
+    end]]
 
 
     PositionX = ENV_WIDTH/2 
     PositionY =  ENV_HEIGHT/2 
-    l_print("PositionX "..PositionX.." PositionY "..PositionY)
-	Speed = 2
+    --l_print("PositionX "..PositionX.." PositionY "..PositionY)
+	--Speed = 2
 	GridMove = true
     Moving = true
     DestinationX = PositionX 
@@ -83,17 +94,37 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
         say("Explorer #: " .. ID .. " received inital position ")
         delta_x = get_delta_x(PositionX, eventTable.x)
         delta_y = get_delta_y(PositionY, eventTable.y)
-    
+        list_robots = Shared.getTable(ROBOTS)
+        list_transporters = list_robots[BaseID].tranporters
+        state_initial = true
     elseif eventDescription == FULL then
-            local baseFullId = eventTable[BASEID]
-            if baseFullId == BaseID then
-                --state_forward_message = true
-                --TODO: explorer need state_foward_message 
-                say("EXPLORER #: " .. ID .. " received base full from " .. baseFullId .. " forwarding and returning to base")
-            end
+        local baseFullId = eventTable[BASEID]
+        if baseFullId == BaseID then
+            --state_forward_message = true
+            --TODO: explorer need state_foward_message 
+            say("EXPLORER #: " .. ID .. " received base full from " .. baseFullId .. " forwarding and returning to base")
+        end
     
             -- TODO: Add logic to handle coordination mode
        -- end
+    elseif eventDescription == ACCEPT then 
+        package_accepted = true 
+        waiting_answer = false
+        say("EXPLORER #: " .. ID .. " got accepted by transporter # " .. sourceID)
+        if last_package_sent then
+            say("Explorer #: " .. ID .. " has sent all the packages in this position")
+            state_sending = false
+            state_moving = true
+            get_number_packages = true
+            count_packages = 0
+            last_package_sent = false
+            trans_accp = 0
+            trans_ign = 0
+        else
+            state_scanning = true 
+            state_sending = false 
+        end
+    
 	end
 end
 
@@ -102,7 +133,7 @@ function takeStep()
      --INITIAL-----------------------------------------------------------------------------------------------
      -------------------------------------------------------------------------------------------------------
     if state_initial then
-        say("Explorer #: " .. ID .. " waiting for inital position ")
+      --  say("Explorer #: " .. ID .. " waiting for inital position ")
         if memory_S[2]~= nil then
             PositionX = math.floor(PositionX)
             PositionY = math.floor(PositionY)
@@ -113,6 +144,7 @@ function takeStep()
             else 
                 table.remove{memory_S,2}
                 say("Explorer #: " .. ID .. " has reached the inital position ")
+                
                 state_scanning = true
                 state_initial = false
             end
@@ -133,7 +165,8 @@ function takeStep()
         
         if memory_S[2] == nil then
             new_position = {}
-            l_print("GOING TO NEW POSITION")
+            l_print(say("Explorer #: " .. ID .. " is going to a NEW POSITION "))
+            
             new_position = get_new_position()
             xx = new_position.x 
             yy = new_position.y 
@@ -155,7 +188,7 @@ function takeStep()
                 --l_print("final x "..PositionX.." final y "..PositionY)
                 memory_S[2] = nil
                 state_moving = false
-                --l_print("position reached ")
+                say("Explorer #: " .. ID .. " has reached the new position ")
                 state_scanning = true
             end
         end
@@ -163,57 +196,35 @@ function takeStep()
      --SCANING----------------------------------------------------------------------------------------------
      -------------------------------------------------------------------------------------------------------
     elseif state_scanning then 
-        l_print("START SCANNING ")
+        say("Explorer #: " .. ID .. " start scanning ")
         ore_table = scanning("ore")
 
-
-        if #ore_found ~= 0 then
-            for i = 1, #ore_table do
-                l_print("ORE IN STATE SCANNING "..i.." position x "..ore_table[i].x.." position y "..ore_table[i].y)
-                if last_package_sent then
-               
-                    ore_send[i]=nil
-
-                end
-            end 
-
-            if last_package_sent then
-                l_print("we have finish sending all packages in this positon")
-                state_scanning = false 
-                state_moving = true
-                get_number_packages = true
-                count_packages = 0
-                last_package_sent = false
-            end
-    
-        else 
-            state_moving = true 
-            state_scanning = false
-        end
-
-    
-        --[[if #ore_table == 0 then --list is empty increase scope
-            l_print("ore table  = 0")
+        if ore_table == nil then --list is empty increase scope
+            l_print(say("Explorer #: " .. ID .. " has not found ore in this position"))
             state_increase_scope = true
             state_scanning = false 
-        else --list is full -> find people
+
+
+        else -- #ore_found ~= 0 then
             people_ID_table = scanning("people")
-            if #people_ID_table > 1 then -- I have a list and tranporters close to me (excluding me)
+            if (#people_ID_table - #trans_contacted) > 0 then -- I have a list and tranporters close to me (excluding me)
                 state_sending = true
             else -- no transporters in my communication scope
                 state_waiting = true 
             end
-            state_scanning = false 
-        end]]
+            state_scanning = false
+
+        end
+
     -------------------------------------------------------------------------------------------------------
     --INCREASING SCOPE----------------------------------------------------------------------------------------------
     -------------------------------------------------------------------------------------------------------
     elseif state_increase_scope then
-        l_print("START INCREASING SCOPE")
+        l_print(say("Explorer #: " .. ID .. " is increasing scope"))
         if MemorySize > (PerceptionScope*PerceptionScope/2) then
             --say("Large memory")
             if (PerceptionScope/CostMoving) > 1.5 then 
-               -- say("increase scope it's to expensive better move")
+                say("Explorer #: " .. ID .. " decided to move instead increase scope")
                 state_moving = true
                 state_increase_scope = false
             else
@@ -221,9 +232,9 @@ function takeStep()
                -- say("let's increase scope")
                 if PerceptionScope > map_size/100 then -- in this case we keep the size of PErceptionScope
                     state_moving = true
-                    --say("scope is max -> let's move")
+                    say("Explorer #: " .. ID .. " has max scope so he moves")
                 else 
-                    --say("scope increased - scan again")
+                    say("Explorer #: " .. ID .. " has increased scope, scan again")
                     state_scanning = true
                 end
                 state_increase_scope = false
@@ -232,19 +243,19 @@ function takeStep()
              --say ("small memory")
             if (CostMoving/PerceptionScope) > 1.5 then 
                 PerceptionScope = PerceptionScope + 1
-               -- say(" moving it's to expensive let's increase scope")
+                say("Explorer #: " .. ID .. " decided to move instead increase scope")
                 if PerceptionScope > map_size/100 then 
-                    --say("scope it's at max -> let's move")
-                    PerceptionScope = 1 --- TODO: Define initial scope 
+                    say("Explorer #: " .. ID .. " has max scope so he moves")
+                    PerceptionScope = 2 --- TODO: Define initial scope 
                     state_moving = true
                 else 
-                    --say(" scope increased - let's move")
+                    say("Explorer #: " .. ID .. " has increased scope, scan again")
                     state_scanning = true
                     
                 end
                 state_increase_scope = false
             else
-                --say("increasing the scope is to expensive let's move ")
+                say("Explorer #: " .. ID .. " decided to move instead increase scope")
                 state_moving = true
                 state_increase_scope = false
             end
@@ -254,16 +265,71 @@ function takeStep()
     --SENDING----------------------------------------------------------------------------------------------
     -------------------------------------------------------------------------------------------------------
     elseif state_sending then
-        say("SENDING POSITIONS TO TRANSPORTERS")
-        --say("number of cycles "..NumberCyclesWaiting)
-        state_sending = false 
-        state_moving = true
+        say("Explorer #: " .. ID .. "is in state_sending")
+
+
+        --targetID = people_ID_table[#people_ID_table - #trans_contacted] --Last transporter in the list
+        if (#people_ID_table - #trans_contacted) <= 0 then
+            state_sending = false
+            state_waiting = true 
+        elseif not waiting_answer then
+           -- say("trans_contacted size "..#trans_contacted)
+            --say("SENDING POSITIONS TO TRANSPORTERS")
+            if #trans_contacted == 0 then 
+    
+                targetID = people_ID_table[1]
+                table.insert(trans_contacted, targetID)
+                --say("set target ID "..targetID)
+            else
+                differences = 0 
+                for i = 1, #people_ID_table  do  
+                    for j =1, #trans_contacted do
+                        if people_ID_table[i] ~= trans_contacted[j] then 
+                            differences = differences +1 
+    
+                        end
+                    end
+                    if differences == #trans_contacted then
+                        differences = 0
+                        targetID = people_ID_table[i]
+                        table.insert(trans_contacted, targetID)
+                        break
+                    end
+                    differences = 0    
+                end
+            end
+
+            sendMessage(targetID, ORE_POS, ore_table)
+            say("Explorer #: " .. ID .. " sent message to ID "..targetID)
+            waiting_answer = true
+            
+        elseif waiting_answer then
+            say("Explorer # "..ID.." is waiting an answer")
+            NumberCyclesWaitingAnswer = NumberCyclesWaitingAnswer + 1
+            if NumberCyclesWaitingAnswer > math.floor(1.5*CommunicationScope) then -- we have waited enough 
+                say("Explorer # "..ID.." was IGNORED")
+                waiting_answer = false 
+                NumberCyclesWaitingAnswer = 0
+            end
+        end
+        
+        if package_accepted  then 
+
+            for i = 1, #ore_table do -- clean ore position table 
+                --l_print("ORE IN STATE SCANNING "..i.." position x "..ore_table[i].x.." position y "..ore_table[i].y)
+                if last_package_sent then
+                    ore_send[i]=nil
+                end
+            end      
+
+            package_accepted = false
+        end
 
     -------------------------------------------------------------------------------------------------------
     --WAITING----------------------------------------------------------------------------------------------
     -------------------------------------------------------------------------------------------------------
     elseif state_waiting then
-        say("WAITING FOR TRANSPORTERS")
+        say("Explorer #: " .. ID .. " is waiting for transporters")
         distance_to_base = math.abs(PositionX - memory_S[1].x) + math.abs(PositionY - memory_S[1].y)
         NumberCyclesWaiting = NumberCyclesWaiting + 1
         people_ID_table = scanning("people")
@@ -273,6 +339,7 @@ function takeStep()
             NumberCyclesWaiting = 0
         end
         if NumberCyclesWaiting >= distance_to_base then 
+            say("Explorer #: " .. ID .. " has waited enough, it moves")
             state_moving = true -- ¿ Maybe it's useful to do a clever movement ...  
             state_sending = false 
             NumberCyclesWaiting = 0
@@ -381,7 +448,7 @@ function scanning(mode)
                 total_number_packages = total_ores/MemorySize
             --[[else 
                 total_number_packages = math.floor(#ore_table/MemorySize)]]
-                l_print("total number packages "..total_ores/MemorySize)
+               -- l_print("total number packages "..total_ores/MemorySize)
             end 
             
             get_number_packages = false
@@ -389,11 +456,11 @@ function scanning(mode)
        -- RETURN ORE FOUND IN MEMORY SIZE SLOTS
         
         if #ore_found <= MemorySize and #ore_found ~= 0 then 
-            l_print(" we have plenty of memory")
+          --  l_print(" we have plenty of memory")
             last_package_sent = true
             return ore_found
         elseif #ore_send == 0 and #ore_found ~= 0 then 
-            l_print("first time we sent things ") 
+          --  l_print("first time we sent things ") 
             for i = 1 , MemorySize do 
                 table.insert(ore_send, ore_found[i])
             end 
@@ -401,7 +468,7 @@ function scanning(mode)
             return ore_send
         elseif #ore_send ~= 0 and #ore_found ~= 0 then
             index_list = {}
-            l_print("sedond time we sent things")
+         --   l_print("sedond time we sent things")
         
             for i = 1 , MemorySize do 
                 for j = #ore_found, 1, -1 do
@@ -412,7 +479,7 @@ function scanning(mode)
 
             end
             max_index = math.max(unpack(index_list))
-            l_print("max index "..max_index)
+           -- l_print("max index "..max_index)
             index_list = nil
             
             
@@ -451,9 +518,14 @@ function scanning(mode)
             for j=1, #y_scan do
 			    ids = Collision.checkPosition(x_scan[i],y_scan[j])
 
-			    for k=1, #ids do 
-                    table.insert(id_table, ids[k])
-                  --  l_print("id found "..ids[k])
+                for k=1, #ids do 
+                    for m = 1 , #list_transporters do
+                        if ids[k]~= ID and ids[k]==list_transporters[m] then 
+                            table.insert(id_table, ids[k])
+                            break
+                            --l_print("id found "..ids[k])
+                        end
+                    end
 		        end
             end
 	    end
@@ -563,4 +635,11 @@ function advance_position(d_x,d_y)
     else 
         return false
     end
+end
+
+
+
+function sendMessage(targetID, eventDescription, eventTable)
+   -- CurrentEnergy = CurrentEnergy - MessageCost
+    Event.emit{speed=343,targetID=targetID, description=eventDescription, table=eventTable}
 end
