@@ -82,7 +82,6 @@ function TakeStep()
     if val then
         Move.to{x=PositionX + 1, y=PositionY}
         val = false
-        Speed = 1
     end
 
     if CurrentEnergy < 0 then
@@ -151,19 +150,22 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
         say("Transporter #: " .. ID .. " received ore positions from " .. sourceID)
         local oreTable = eventTable
 
+        local index = 2
+
         for i = 2, #Memory do
             if Memory[i] == nil then
+                index = i
                 break
             end
         end
 
-        local freeSpace = #Memory - i
+        local freeSpace = #Memory - index
 
         if #oreTable <= freeSpace then
 
             for j = 1, #oreTable do
-                Memory[i] = oreTable[j]
-                i = i + 1
+                Memory[index] = oreTable[j]
+                index = index + 1
             end
 
             AcceptID = sourceID
