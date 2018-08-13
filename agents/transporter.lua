@@ -159,7 +159,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
             end
         end
 
-        local freeSpace = #Memory - index
+        local freeSpace = MemorySize - index
 
         if #oreTable <= freeSpace then
 
@@ -182,12 +182,13 @@ function determineNextAction()
         if OreCount < CarriageCapacity then
 
             if PlanetMovement.get_distance_to(Memory[2]) * MotionCost + PickupCost + PlanetMovement.get_distance_between(Memory[1], Memory[2]) * MotionCost <= CurrentEnergy * 0.8 then
-
+                say("Transporter #: " .. ID .. " is going to " .. Memory[2].x .. " " .. Memory[2].y)
                 state_moving = true
                 state_pick_up = true
                 return
 
             else -- low on energy, return to base
+                say("Transporter #: " .. ID .. " is low on energy, returning to base ")
                 state_deposit = true
                 state_moving = true
                 return
@@ -195,17 +196,21 @@ function determineNextAction()
             end
 
         else -- storage is full, deposit ores
+            say("Transporter #: " .. ID .. " storage full, returning to base ")
             state_deposit = true
             state_moving = true
             return
         end
 
     elseif calculateEnergyToBase() >= CurrentEnergy * 0.7 then -- Running low on energy, return to base
+        say("Transporter #: " .. ID .. " is low on energy, returning to base ")
         state_deposit = true
         state_moving = true
         Memory[2] = {x=PositionX, y=PositionY}
         return
     end
+
+    say("Transporter #: " .. ID .. " no destination set ")
 
 end
 
