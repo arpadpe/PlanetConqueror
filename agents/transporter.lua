@@ -139,9 +139,26 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
     elseif eventDescription == Descriptions.OREPOS then
         say("Transporter #: " .. ID .. " received ore positions from " .. sourceID)
         local oreTable = eventTable
-        AcceptID = sourceID
 
-        state_accept_ores = true
+        for i = 2, #Memory do
+            if Memory[i] == nil then
+                break
+            end
+        end
+
+        local freeSpace = #Memory - i
+
+        if #oreTable <= freeSpace then
+
+            for j = 1, #oreTable do
+                Memory[i] = oreTable[j]
+                i = i + 1
+            end
+
+            AcceptID = sourceID
+
+            state_accept_ores = true
+        end
 	end
 end
 
@@ -197,7 +214,7 @@ function sendMessage(targetID, eventDescription, eventTable)
     if calculateEnergyToBase() < CurrentEnergy * 0.9 then
         CurrentEnergy = CurrentEnergy - MessageCost
         say("Transporter #: " .. ID .. " sending message '" .. eventDescription .. "' to " .. targetID)
-        Event.emit{targetID=targetID, description=eventDescription, table=eventTable}
+        Event.emit{speed=343, targetID=targetID, description=eventDescription, table=eventTable}
     end
 end
 
