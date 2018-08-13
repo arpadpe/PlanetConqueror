@@ -250,11 +250,17 @@ function shiftMemory()
 end
 
 function move()
-    local delta_x = PlanetMovement.get_delta_x(PositionX, Memory[2].x)
-    local delta_y = PlanetMovement.get_delta_y(PositionY, Memory[2].y)
+    local currentPosition = {x=PositionX, y=PositionY}
 
-    if PlanetMovement.advance_position(delta_x, delta_y) then
+    local bestDelta = PlanetMovement.get_delta_position(currentPosition, Memory[2])
+
+    if PlanetMovement.advance_position(bestDelta.x, bestDelta.y) then
         CurrentEnergy = CurrentEnergy - MotionCost
+    else
+        local secondBestDelta = PlanetMovement.get_second_delta_position(currentPosition, Memory[2])
+        if PlanetMovement.advance_position(secondBestDelta.x, secondBestDelta.y) then
+            CurrentEnergy = CurrentEnergy - MotionCost
+        end
     end
 end
 

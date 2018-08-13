@@ -10,6 +10,43 @@ function planetMovement.get_distance_between(position1, position2)
 	return math.abs(planetMovement.calc_min_dist(position1.x, position.x, ENV_WIDTH)) + math.abs(planetMovement.calc_min_dist(position1.y, position.y, ENV_HEIGHT))
 end
 
+function planetMovement.get_delta_position(position, goal)
+	local delta_x = planetMovement.get_delta_x(position.x, goal.x)
+	local delta_y = planetMovement.get_delta_y(position.y, goal.y)
+
+	return {x=delta_x, y=delta_y}
+end
+
+function planetMovement.get_second_delta_position(position, goal)
+	
+	local delta = planetMovement.get_delta_position(position, goal)
+
+	local random = Stat.randomInteger(0, 1)
+
+	if delta.x ~= 0 and delta.y ~= 0 then
+		if Stat.randomInteger(0, 1) == 0 then
+			delta.x = 0
+		else
+			delta.y = 0
+		end
+	elseif delta.x ~= 0 and delta.y == 0 then
+		if Stat.randomInteger(0, 1) == 0 then
+			delta.y = 1
+		else
+			delta.y = -1
+		end
+	elseif delta.x == 0 and delta.y ~= 0 then
+		if Stat.randomInteger(0, 1) == 0 then
+			delta.x = 1
+		else
+			delta.y = -1
+		end
+	end
+
+	return delta
+
+end
+
 function planetMovement.get_delta_x(pos_x, x_goal)
 
     local dist = planetMovement.calc_min_dist(pos_x, x_goal, ENV_WIDTH)
