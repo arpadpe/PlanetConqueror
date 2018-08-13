@@ -244,10 +244,12 @@ function depositOres()
 end
 
 function pickUpOre()
-    Map.modifyColor(PositionX, PositionY, background_color)
-    OreCount = OreCount + 1
-    CurrentEnergy = CurrentEnergy - PickupCost
-    say("Transporter #: " .. ID .. " picked up ore, current ore count: " .. OreCount)
+    if Map.checkColor(PositionX, PositionY) ~= background_color then
+        Map.modifyColor(PositionX, PositionY, background_color)
+        OreCount = OreCount + 1
+        CurrentEnergy = CurrentEnergy - PickupCost
+        say("Transporter #: " .. ID .. " picked up ore, current ore count: " .. OreCount)
+    end
 end
 
 function die()
@@ -272,12 +274,16 @@ function move()
 
     local bestDelta = PlanetMovement.get_delta_position(currentPosition, Memory[2])
 
+    say("Transporter #: " .. ID .. " moving")
+
     if PlanetMovement.advance_position(bestDelta.x, bestDelta.y) then
         CurrentEnergy = CurrentEnergy - MotionCost
+        say("Transporter #: " .. ID .. " moved.")
     else
         local secondBestDelta = PlanetMovement.get_second_delta_position(currentPosition, Memory[2])
         if PlanetMovement.advance_position(secondBestDelta.x, secondBestDelta.y) then
             CurrentEnergy = CurrentEnergy - MotionCost
+            say("Transporter #: " .. ID .. " moved.")
         end
     end
 end
