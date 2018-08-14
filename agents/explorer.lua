@@ -24,11 +24,7 @@ last_package_sent = false
 direction_base = true
 transporterID = 0
 MessageCost = 1
-D = 30 -- % ore
-P = 7-- minimum value scope = 3
-Y = 2 --number of transporters
-X = 2 --number of explorers 
-MemorySize = 3--Y + X -2 
+ 
 memory_S = {}
 state_low_battery = false
 state_initial = false 
@@ -43,25 +39,31 @@ waiting_answer = false
 total_number_packages = 0
 package_accepted = false 
 count_packages = 0 
-map_size = ENV_WIDTH
+
 
 trans_contacted = {}
 
+Energy = Shared.getNumber(5)			    	-- E
+GridSize = Shared.getNumber(6)					-- G
+CommunicationScope = Shared.getNumber(7)		-- I
+CoordinationMode = Shared.getNumber(8)			-- M
+NumberOfBases = Shared.getNumber(9)				-- N
+PerceptionScope = Shared.getNumber(10)			-- P
+MotionCost = Shared.getNumber(11)				-- Q
+MemorySize = Shared.getNumber(12)        		-- S
+NumberOfCycles = Shared.getNumber(13)			-- T
+ExplorersNumber = Shared.getNumber(15)			-- X
+TransportersNumber = Shared.getNumber(16)		-- Y 
+
 NumberCyclesWaiting = 0
 NumberCyclesWaitingAnswer = 0
-CommunicationScope = 50     -- I
-PerceptionScope = 5         -- P
-CostMoving = 2
+
+
+
 trans_working = false
-Energy = 150                -- E
+    
 CurrentEnergy = Energy
-FULL = "full"
-BASEID = "baseID"
-INIT = "init"
-ORE_POS = "ore_pos"
-ACCEPT = "accept"
-ROBOTS = "robots"
-DONE = "done"
+
 list_transporters = {}
 BaseID = 0
 delta_y =0 
@@ -85,29 +87,29 @@ end
 
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
     
-    if eventDescription == INIT then
+    if eventDescription == Descriptions.INIT then
         BaseID = sourceID
         table.insert(memory_S, 1, {x = math.floor(sourceX), y =math.floor(sourceY)})
-      --  say("Explorer #: " .. ID .. " received inital position ")
+        say("Explorer #: " .. ID .. " received inital position ")
 
         state_initial = true
-    elseif eventDescription == FULL and not stay_home then
-        local baseFullId = eventTable[BASEID]
+    elseif eventDescription == Descriptions.FULL and not stay_home then
+        local baseFullId = eventTable[Descriptions.BASEID]
         if baseFullId == BaseID then
             state_forward_full = true
-          --  say("Explorer #: " .. ID .. " received base full for " .. baseFullId .. " forwarding and returning to base")
+            say("Explorer #: " .. ID .. " received base full for " .. baseFullId .. " forwarding and returning to base")
         end
     
             -- TODO: Add logic to handle coordination mode
        -- end
-    elseif eventDescription == ACCEPT then 
+    elseif eventDescription == Descriptions.ACCEPT then 
         trans_working = true
         package_accepted = true 
         waiting_answer = false
-    --    say("EXPLORER #: " .. ID .. " got accepted by transporter # " .. sourceID)
+        say("EXPLORER #: " .. ID .. " got accepted by transporter # " .. sourceID)
         if last_package_sent then
             trans_working = false
-        --    say("Explorer #: " .. ID .. " has sent all the packages in this position")
+            say("Explorer #: " .. ID .. " has sent all the packages in this position")
             state_sending = false
             state_moving = true
             get_number_packages = true
@@ -119,8 +121,8 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
             state_scanning = true 
             state_sending = false 
         end
-    elseif eventDescription == DONE then
-      --  say("Explorer # "..ID.." got message DONE from "..sourceID)
+    elseif eventDescription == Descriptions.DONE then
+        say("Explorer # "..ID.." got message DONE from "..sourceID)
         for i =1, #trans_contacted do
             if sourceID == trans_contacted[i] then 
                 table.remove(trans_contacted, i)
@@ -160,16 +162,16 @@ function takeStep()
                         delta_x = AgentMovement.get_delta_x(PositionX, memory_S[2].x)
                         delta_y = AgentMovement.get_delta_y(PositionY, memory_S[2].y)
                         if AgentMovement.advance_position(delta_x,delta_y) then --returns true if move success                    
-                         CurrentEnergy = CurrentEnergy - CostMoving
+                         CurrentEnergy = CurrentEnergy - MotionCost
                         end
                      end 
                 else 
                     table.remove{memory_S,2}
-                 --   say("Explorer #: " .. ID .. " has reached the inital position ")
+                    say("Explorer #: " .. ID .. " has reached the inital position ")
                     
                     state_scanning = true
                     state_initial = false
-                    list_robots = Shared.getTable(ROBOTS)
+                    list_robots = Shared.getTable(Descriptions.ROBOTS)
                     list_transporters = list_robots[BaseID].transporters
                  --   print("Number of transporters " .. #list_transporters)
                 end
@@ -190,7 +192,7 @@ function takeStep()
             
             if memory_S[2] == nil then
                 new_position = {}
-             --   l_print("Explorer #: " .. ID .. " is going to a NEW POSITION ")
+                l_print("Explorer #: " .. ID .. " is going to a NEW POSITION ")
                 
                 new_position = AgentMovement.get_new_position()
                 xx = new_position.x 
@@ -213,7 +215,7 @@ function takeStep()
                    --    say(" moving Current position "..PositionX.." "..PositionY)  
                      --  say(" goal position "..memory_S[2].x.." "..memory_S[2].y)
                         if AgentMovement.advance_position(delta_x,delta_y) then --returns true if move success                 
-                            CurrentEnergy = CurrentEnergy - CostMoving
+                            CurrentEnergy = CurrentEnergy - MotionCost
                         end
                      end 
                 else 
@@ -283,14 +285,14 @@ function takeStep()
             --l_print("Explorer #: " .. ID .. " is increasing scope")
             if MemorySize > (PerceptionScope*PerceptionScope/2) then
                 --say("Large memory")
-                if (PerceptionScope/CostMoving) > 1.5 then 
+                if (PerceptionScope/MotionCost) > 1.5 then 
                   --  say("Explorer #: " .. ID .. " decided to move instead increase scope")
                     state_moving = true
                     state_increase_scope = false
                 else
                     PerceptionScope = PerceptionScope + 1
                    -- say("let's increase scope")
-                    if PerceptionScope > map_size/100 then -- in this case we keep the size of PErceptionScope
+                    if PerceptionScope > GridSize/100 then -- in this case we keep the size of PErceptionScope
                         state_moving = true
                      --   say("Explorer #: " .. ID .. " has max scope so he moves")
                     else 
@@ -301,10 +303,10 @@ function takeStep()
                 end
             else 
                  --say ("small memory")
-                if (CostMoving/PerceptionScope) > 1.5 then 
+                if (MotionCost/PerceptionScope) > 1.5 then 
                     PerceptionScope = PerceptionScope + 1
                   --  say("Explorer #: " .. ID .. " decided to move instead increase scope")
-                    if PerceptionScope > map_size/100 then 
+                    if PerceptionScope > GridSize/100 then 
                       --  say("Explorer #: " .. ID .. " has max scope so he moves")
                         PerceptionScope = 2 --- TODO: Define initial scope 
                         state_moving = true
@@ -359,16 +361,16 @@ function takeStep()
                     end
                 end
 
-                sendMessage(targetID, ORE_POS, ore_table)
+                sendMessage(targetID, Descriptions.OREPOS, ore_table)
                 
-               -- say("Explorer #: " .. ID .. " sent message to ID "..targetID)
+                say("Explorer #: " .. ID .. " sent message to ID "..targetID)
                 waiting_answer = true
             end
             if waiting_answer then
               -- say("Explorer # "..ID.." is waiting an answer")
                 NumberCyclesWaitingAnswer = NumberCyclesWaitingAnswer + 1
                 if NumberCyclesWaitingAnswer > math.floor(1.5*CommunicationScope) + 2 then -- we have waited enough 
-                    --say("Explorer # "..ID.." was IGNORED")
+                    say("Explorer # "..ID.." was IGNORED")
                     waiting_answer = false 
                     NumberCyclesWaitingAnswer = 0
                 end
@@ -400,7 +402,7 @@ function takeStep()
                 NumberCyclesWaiting = 0
             end
             if NumberCyclesWaiting >= distance_to_base and not trans_working then 
-             --   say("Explorer #: " .. ID .. " has waited enough, it moves")
+                say("Explorer #: " .. ID .. " has waited enough, it moves")
                 state_moving = true -- ¿ Maybe it's useful to do a clever movement ...  
                 state_sending = false 
                 NumberCyclesWaiting = 0

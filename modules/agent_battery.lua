@@ -2,7 +2,7 @@ local agentBattery={}
 
 
 function agentBattery.low_battery_sending()
-    if (AgentMovement.dist_to_base()*CostMoving + 2) >= CurrentEnergy * 0.7 and not state_low_battery then -- Running low on energy, return to base
+    if (AgentMovement.dist_to_base()*MotionCost + 2) >= CurrentEnergy * 0.7 and not state_low_battery then -- Running low on energy, return to base
         say("Transporter #: " .. ID .. " is low on energy, returning to base "..CurrentEnergy)
   
         PositionX = math.floor(PositionX)
@@ -26,7 +26,7 @@ end
 
 
 function agentBattery.low_battery_scanning()
-    if (AgentMovement.dist_to_base()*CostMoving + 1 + PerceptionScope) >= CurrentEnergy * 0.7 and not state_low_battery then -- Running low on energy, return to base
+    if (AgentMovement.dist_to_base()*MotionCost + 1 + PerceptionScope) >= CurrentEnergy * 0.7 and not state_low_battery then -- Running low on energy, return to base
         say("Transporter #: " .. ID .. " is low on energy, returning to base "..CurrentEnergy)
   
         PositionX = math.floor(PositionX)
@@ -48,7 +48,7 @@ function agentBattery.low_battery_scanning()
 end 
 
 function agentBattery.low_battery_moving()
-    if (AgentMovement.dist_to_base()*CostMoving + 1) >= CurrentEnergy * 0.7 and not state_low_battery then -- Running low on energy, return to base
+    if (AgentMovement.dist_to_base()*MotionCost + 1) >= CurrentEnergy * 0.7 and not state_low_battery then -- Running low on energy, return to base
         say("Transporter #: " .. ID .. " is low on energy, returning to base "..CurrentEnergy)
   
         PositionX = math.floor(PositionX)
