@@ -66,14 +66,13 @@ function InitializeAgent()
 	NumberOfCycles = Shared.getNumber(13)			-- T
 	CarriageCapacity = Shared.getNumber(14)			-- W
 	ExplorersNumber = Shared.getNumber(15)			-- X
-	TransportersNumber = Shared.getNumber(16)		-- Y
-
-	checkParameters()   
+	TransportersNumber = Shared.getNumber(16)		-- Y  
 
 	OreCount = 0
 
 	if ID == 1 then
 		Agent.addAgent("painting.lua")
+		checkParameters() 
 	end
 
 	explorers = {}
