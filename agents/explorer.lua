@@ -30,6 +30,7 @@ MemorySize = 3--Y + X -2
 memory_S = {}
 state_low_battery = false
 state_initial = false 
+stay_home = false
 state_moving = false
 state_scanning = false
 state_increase_scope = false
@@ -60,7 +61,7 @@ ACCEPT = "accept"
 ROBOTS = "robots"
 DONE = "done"
 list_transporters = {}
-baseID = 0
+BaseID = 0
 delta_y =0 
 delta_x =0
 
@@ -83,13 +84,13 @@ end
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
     
     if eventDescription == INIT then
-        baseID = sourceID
+        BaseID = sourceID
         table.insert(memory_S, {x = eventTable.x, y =eventTable.y})
         say("Explorer #: " .. ID .. " received inital position ")
 
         state_initial = true
-    elseif eventDescription == FULL then
-        local baseFullId = eventTable[Descriptions.BASEID]
+    elseif eventDescription == FULL and not stay_home then
+        local baseFullId = eventTable[BASEID]
         if baseFullId == BaseID then
             state_forward_full = true
             say("Explorer #: " .. ID .. " received base full for " .. baseFullId .. " forwarding and returning to base")
@@ -135,10 +136,19 @@ function takeStep()
         Move.to{x=PositionX + 1, y=PositionY}
         val = false
     else
+
+        if state_forward_full and not stay_home then 
+            forwardMessage()
+            memory_S[2].x = memory_S[1].x
+            memory_S[2].y = memory_S[1].y
+            stay_home = true 
+            state_moving = true 
+            state_forward_full = false 
+            state_initial = false
          -------------------------------------------------------------------------------------------------------
          --INITIAL-----------------------------------------------------------------------------------------------
          -------------------------------------------------------------------------------------------------------
-        if state_initial then
+        elseif state_initial then
           --  say("Explorer #: " .. ID .. " waiting for inital position ")
             if memory_S[2]~= nil then
                 PositionX = math.floor(PositionX)
@@ -221,6 +231,17 @@ function takeStep()
                     say("Explorer #: " .. ID .. " has reached the new position ")
                     state_scanning = true
                     end
+
+                    if stay_home then 
+                        say("Explorer: # "..ID.." has reached home, work finish for today ")
+                        state_initial = false 
+                        state_moving = false 
+                        state_scanning = false 
+                        state_sending = false 
+                        state_waiting = false 
+                        state_increase_scope = false 
+                        state_forward_full = false 
+                    end 
                 end
             end
             
@@ -337,7 +358,7 @@ function takeStep()
                 end
 
                 sendMessage(targetID, ORE_POS, ore_table)
-                CurrentEnergy = CurrentEnergy - MessageCost
+                
                 say("Explorer #: " .. ID .. " sent message to ID "..targetID)
                 waiting_answer = true
             end
@@ -413,11 +434,19 @@ function cleanUp()
     file:close()
 end
 
-
+function forwardMessage()
+    local ids = AgentScanner.scanning("people")
+    for i=1, #ids do
+        local targetID = ids[i]
+        if targetID ~= ID then
+            sendMessage(targetID, Descriptions.FULL, {baseID = BaseID})
+        end
+    end
+end
 
 
 function sendMessage(targetID, eventDescription, eventTable)
-    -- CurrentEnergy = CurrentEnergy - MessageCost
-     Event.emit{speed=343,targetID=targetID, description=eventDescription, table=eventTable}
+    CurrentEnergy = CurrentEnergy - MessageCost
+    Event.emit{speed=343,targetID=targetID, description=eventDescription, table=eventTable}
  end
  
