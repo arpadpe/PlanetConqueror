@@ -43,6 +43,7 @@ state_pick_up = false
 state_forward_full = false
 state_moving = false
 state_accept_ores = false
+state_done = false
 
 -- Initialization of the agent.
 function InitializeAgent()
@@ -122,6 +123,10 @@ function TakeStep()
         sendAcceptMessage()
         state_accept_ores = false
         determineNextAction()
+
+    elseif state_done then
+        sendDoneMessage()
+        state_done = false
 
     elseif state_return_to_base then
         -- Do nothing
@@ -211,12 +216,17 @@ function determineNextAction()
         return
     end
 
-    say("Transporter #: " .. ID .. " no destination set ")
+    say("Transporter #: " .. ID .. " done, waiting for new ore positions")
+    state_done = true
 
 end
 
 function sendAcceptMessage()
     sendMessage(AcceptID, Descriptions.ACCEPT)
+end
+
+function sendDoneMessage()
+    sendMessage(AcceptID, Descriptions.DONE)
 end
 
 function forwardMessage()
