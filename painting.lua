@@ -6,21 +6,20 @@ Shared = require "ranalib_shared"
 Draw = require "ranalib_draw" 
 Shared = require "ranalib_shared"
 
-
 background_color = {0,0,0}
 ore_color = {255,255,0}
-
-D = 100 -- % ore
-P = 12
 
 function initializeAgent()
 
 	l_debug("Enviroment : " .. ID .. " has been initialized")
 
+
+    OreDensity = Shared.getNumber(4)                -- D
+
     --Drawing the map--
 	for i = 0, ENV_WIDTH -1 do
         for j = 0, ENV_HEIGHT -1 do
-            if D >= Stat.randomInteger(1,100) then
+            if OreDensity >= Stat.randomInteger(1,100) then
                 Map.modifyColor(i,j, ore_color)
             else 
                Map.modifyColor(i,j, background_color)

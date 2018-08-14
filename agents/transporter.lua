@@ -60,15 +60,24 @@ function InitializeAgent()
 
 	GridMove = true
 
-	Energy = 1500                -- E
+    OreCapacity = Shared.getNumber(3)               -- C
+    OreDensity = Shared.getNumber(4)                -- D
+    Energy = Shared.getNumber(5)                    -- E
+    GridSize = Shared.getNumber(6)                  -- G
+    CommunicationScope = Shared.getNumber(7)        -- I
+    CoordinationMode = Shared.getNumber(8)          -- M
+    NumberOfBases = Shared.getNumber(9)             -- N
+    PerceptionScope = Shared.getNumber(10)          -- P
+    MotionCost = Shared.getNumber(11)               -- Q
+    MemorySize = Shared.getNumber(12)               -- S
+    NumberOfCycles = Shared.getNumber(13)           -- T
+    CarriageCapacity = Shared.getNumber(14)         -- W
+    ExplorersNumber = Shared.getNumber(15)          -- X
+    TransportersNumber = Shared.getNumber(16)       -- Y   
+
     CurrentEnergy = Energy
-    CommunicationScope = 20     -- I
-    MotionCost = 3              -- Q
     MessageCost = 1
-    PickupCost = 0
-    MemorySize = 15             -- S
-    MaxCycles = 100000          -- T
-    CarriageCapacity = 3       -- W
+    PickupCost = 1
     OreCount = 0
 
     DestinationX = PositionX
