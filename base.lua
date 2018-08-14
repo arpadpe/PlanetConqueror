@@ -59,16 +59,16 @@ function InitializeAgent()
 		Agent.addAgent("painting.lua")
 	end
 
-	transporters = {}
-	for i = 1, TransportersNumber do
-		local agentID = Agent.addAgent("agents/transporter.lua", PositionX, PositionY)
-		table.insert(transporters, agentID)
-	end
-
 	explorers = {}
 	for i = 1, ExplorersNumber do
 		local agentID = Agent.addAgent("agents/explorer.lua", PositionX, PositionY)
 		table.insert(explorers, agentID)
+	end
+
+	transporters = {}
+	for i = 1, TransportersNumber do
+		local agentID = Agent.addAgent("agents/transporter.lua", PositionX, PositionY)
+		table.insert(transporters, agentID)
 	end
 
 	ShareTable()

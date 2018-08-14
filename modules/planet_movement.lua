@@ -7,7 +7,7 @@ end
 
 function planetMovement.get_distance_between(position1, position2)
 
-	return math.abs(planetMovement.calc_min_dist(position1.x, position.x, ENV_WIDTH)) + math.abs(planetMovement.calc_min_dist(position1.y, position.y, ENV_HEIGHT))
+	return math.abs(planetMovement.calc_min_dist(position1.x, position2.x, ENV_WIDTH)) + math.abs(planetMovement.calc_min_dist(position1.y, position2.y, ENV_HEIGHT))
 end
 
 function planetMovement.get_delta_position(position, goal)
@@ -49,7 +49,11 @@ end
 
 function planetMovement.get_delta_x(pos_x, x_goal)
 
-    local dist = planetMovement.calc_min_dist(pos_x, x_goal, ENV_WIDTH)
+	if pos_x == x_goal then
+		return 0
+	end
+
+    local dist = planetMovement.calc_min_dist(math.floor(pos_x), math.floor(x_goal), ENV_WIDTH)
 
     return dist / math.abs(dist)
 
@@ -57,7 +61,11 @@ end
 
 function planetMovement.get_delta_y(pos_y, y_goal)
 
-    local dist = planetMovement.calc_min_dist(pos_y, y_goal, ENV_HEIGHT)
+	if pos_y == y_goal then
+		return 0
+	end
+
+    local dist = planetMovement.calc_min_dist(math.floor(pos_y), math.floor(y_goal), ENV_HEIGHT)
 
     return dist / math.abs(dist)
 
@@ -96,8 +104,8 @@ function planetMovement.advance_position(d_x, d_y)
     elseif PositionY < 1  then
         PositionY = ENV_HEIGHT -1 
     end
-    
-    -- move when the square is empty
+
+    -- move if the square is empty
     if not Collision.checkCollision(PositionX+d_x,PositionY+d_y) then
         Move.to{x=PositionX+d_x, y=PositionY+d_y}
         return true

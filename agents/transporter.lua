@@ -56,18 +56,16 @@ function InitializeAgent()
 
 	GridMove = true
 
-	Energy = 150                -- E
+	Energy = 1500                -- E
     CurrentEnergy = Energy
     CommunicationScope = 20     -- I
-    MotionCost = 5              -- Q
+    MotionCost = 3              -- Q
     MessageCost = 1
     PickupCost = 0
     MemorySize = 15             -- S
     MaxCycles = 100000          -- T
     CarriageCapacity = 25       -- W
     OreCount = 0
-
-    Moving = true
 
     DestinationX = PositionX
     DestinationY = PositionY
@@ -90,42 +88,43 @@ function TakeStep()
 
     if state_init then
         -- wait for base
-    elseif not Moving then
-        
-        if state_moving then
-        
+    elseif state_moving then
+        if not Moving then
             move()
-            if PositionX == Memory[2].x and PositionY == Memory[2].y then
-                shiftMemory()
-                state_moving = false
-            end
-        
-        elseif state_deposit then
-            depositOres()
-            state_deposit = false
-            state_moving = true
-            state_pick_up = true
-        
-        elseif state_pick_up then
-            pickUpOre()
-            state_pick_up = false
-            determineNextAction()
-
-        elseif state_forward_full then
-            forwardMessage()
-            Memory[2] = Memory[1]
-            state_moving = true
-            state_forward_full = false
-            state_return_to_base = true
-
-        elseif state_accept_ores then
-            sendAcceptMessage()
-            state_accept_ores = false
-            determineNextAction()
-
-        elseif state_return_to_base then
-            -- Do nothing
         end
+        if PositionX == Memory[2].x and PositionY == Memory[2].y then
+            shiftMemory()
+            state_moving = false
+            Moving = false
+        else
+            --print("Not there yet")
+        end
+    
+    elseif state_deposit then
+        depositOres()
+        state_deposit = false
+        state_moving = true
+        state_pick_up = true
+    
+    elseif state_pick_up then
+        pickUpOre()
+        state_pick_up = false
+        determineNextAction()
+
+    elseif state_forward_full then
+        forwardMessage()
+        Memory[2] = Memory[1]
+        state_moving = true
+        state_forward_full = false
+        state_return_to_base = true
+
+    elseif state_accept_ores then
+        sendAcceptMessage()
+        state_accept_ores = false
+        determineNextAction()
+
+    elseif state_return_to_base then
+        -- Do nothing
     end
 end
 
@@ -147,7 +146,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
         -- TODO: Add logic to handle coordination mode
 
     elseif eventDescription == Descriptions.OREPOS then
-        say("Transporter #: " .. ID .. " received ore positions from " .. sourceID)
+        say("Transporter #: " .. ID .. " received " .. #eventTable ..  " ore positions from " .. sourceID)
         local oreTable = eventTable
 
         local index = 2
@@ -181,7 +180,8 @@ function determineNextAction()
 
         if OreCount < CarriageCapacity then
 
-            if PlanetMovement.get_distance_to(Memory[2]) * MotionCost + PickupCost + PlanetMovement.get_distance_between(Memory[1], Memory[2]) * MotionCost <= CurrentEnergy * 0.8 then
+            if (PlanetMovement.get_distance_to(Memory[2]) * MotionCost) + PickupCost + (PlanetMovement.get_distance_between(Memory[1], Memory[2]) * MotionCost) <= CurrentEnergy * 0.8 then
+                say("Transporter #: " .. ID .. " current position " .. PositionX .. " " .. PositionY)
                 say("Transporter #: " .. ID .. " is going to " .. Memory[2].x .. " " .. Memory[2].y)
                 state_moving = true
                 state_pick_up = true
@@ -189,6 +189,7 @@ function determineNextAction()
 
             else -- low on energy, return to base
                 say("Transporter #: " .. ID .. " is low on energy, returning to base ")
+                print("CurrentEnergy " .. CurrentEnergy)
                 state_deposit = true
                 state_moving = true
                 return
@@ -261,29 +262,28 @@ end
 
 function shiftMemory()
     local j = 2
-    for i=2,#Memory-1 do
+    for i=2, #Memory do
+        j = i
         if Memory[i + 1] == nil then break end 
         Memory[i] = Memory[i+1]
-        j = i
     end
     Memory[j] = nil
 end
 
 function move()
+    PositionX = math.floor(PositionX)
+    PositionY = math.floor(PositionY)
+
     local currentPosition = {x=PositionX, y=PositionY}
 
     local bestDelta = PlanetMovement.get_delta_position(currentPosition, Memory[2])
 
-    say("Transporter #: " .. ID .. " moving")
-
     if PlanetMovement.advance_position(bestDelta.x, bestDelta.y) then
         CurrentEnergy = CurrentEnergy - MotionCost
-        say("Transporter #: " .. ID .. " moved.")
     else
         local secondBestDelta = PlanetMovement.get_second_delta_position(currentPosition, Memory[2])
         if PlanetMovement.advance_position(secondBestDelta.x, secondBestDelta.y) then
             CurrentEnergy = CurrentEnergy - MotionCost
-            say("Transporter #: " .. ID .. " moved.")
         end
     end
 end
