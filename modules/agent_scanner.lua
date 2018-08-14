@@ -66,7 +66,7 @@ function agentScanner.scanning(mode)
                 if Draw.compareColor(Map.checkColor(x_scan[i],y_scan[j]),ore_color) then
                     table.insert(ore_found,{x = x_scan[i],y = y_scan[j]})
                     
-                    l_print("ore found: "..x_scan[i].." "..y_scan[j])
+                  --  l_print("ore found: "..x_scan[i].." "..y_scan[j])
                     total_ores = total_ores + 1 
                 end
             end
@@ -117,7 +117,7 @@ function agentScanner.scanning(mode)
             index_list = nil
             
             
-            l_print("remainings "..(#ore_found - max_index))
+           --l_print("remainings "..(#ore_found - max_index))
             if (#ore_found - max_index) < MemorySize then 
                 for i = MemorySize, (#ore_found - max_index)+1, -1 do
                     ore_send[i]=nil --table.remove(ore_send,i)
@@ -130,8 +130,10 @@ function agentScanner.scanning(mode)
             else
 
                 for i = 1, MemorySize do
+                    if ore_send[i] ~= nil then 
                     ore_send[i].x = ore_found[max_index + i].x
                     ore_send[i].y = ore_found[max_index + i].y
+                    end
 
                 end
 
