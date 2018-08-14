@@ -44,6 +44,9 @@ state_forward_full = false
 state_moving = false
 state_accept_ores = false
 state_done = false
+state_wait_new_ores = true
+
+robotsTable = {}
 
 -- Initialization of the agent.
 function InitializeAgent()
@@ -70,6 +73,8 @@ function InitializeAgent()
 
     DestinationX = PositionX
     DestinationY = PositionY
+
+    BasePosition = {x = PositionX, y = PositionY}
 
     Memory = {}     
 end
@@ -127,9 +132,14 @@ function TakeStep()
     elseif state_done then
         sendDoneMessage()
         state_done = false
+        state_wait_new_ores = true
 
     elseif state_return_to_base then
         -- Do nothing
+
+    elseif state_wait_new_ores then
+        handleWaiting()
+
     end
 end
 
@@ -140,7 +150,8 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
         BaseID = sourceID
         state_init = false
         say("Transporter #: " .. ID .. " received init from " .. sourceID)
-        table.insert(Memory, {x=sourceX, y=sourceY}) 
+        table.insert(Memory, {x=sourceX, y=sourceY})
+        robotsTable = Shared.getTable(Descriptions.ROBOTS)
 	elseif eventDescription == Descriptions.FULL and not (state_return_to_base or state_forward_full) then
         local baseFullId = eventTable[Descriptions.BASEID]
         if baseFullId == BaseID then
@@ -218,6 +229,40 @@ function determineNextAction()
 
     say("Transporter #: " .. ID .. " done, waiting for new ore positions")
     state_done = true
+
+end
+
+function handleWaiting()
+    
+    local ids = PlanetScanner.get_ids_in_range(CommunicationScope)
+
+    for i=1, #ids do
+
+        for j=1, #robotsTable[BaseID].explorers do
+
+            if ids[i] == robotsTable[BaseID].explorers[j] then
+                return
+            end
+
+        end
+    end
+
+    -- did not find explorers, move
+    Memory[2] = PlanetMovement.get_random_pos(CommunicationScope)
+
+    if (PlanetMovement.get_distance_to(Memory[2]) * MotionCost) + (PlanetMovement.get_distance_between(Memory[1], Memory[2]) * MotionCost) <= CurrentEnergy * 0.8 then
+        say("Transporter #: " .. ID .. " current position " .. PositionX .. " " .. PositionY)
+        say("Transporter #: " .. ID .. " is going to " .. Memory[2].x .. " " .. Memory[2].y)
+        state_moving = true
+        return
+
+    else -- low on energy, return to base
+        say("Transporter #: " .. ID .. " is low on energy, returning to base ")
+        state_deposit = true
+        state_moving = true
+        return
+
+    end
 
 end
 
