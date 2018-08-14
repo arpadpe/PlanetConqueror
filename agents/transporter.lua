@@ -94,6 +94,12 @@ function TakeStep()
 
     if state_init then
         -- wait for base
+
+    elseif state_accept_ores then
+        sendAcceptMessage()
+        state_accept_ores = false
+        determineNextAction()
+        
     elseif state_moving then
         if not Moving then
             move()
@@ -123,11 +129,6 @@ function TakeStep()
         state_moving = true
         state_forward_full = false
         state_return_to_base = true
-
-    elseif state_accept_ores then
-        sendAcceptMessage()
-        state_accept_ores = false
-        determineNextAction()
 
     elseif state_done then
         sendDoneMessage()
