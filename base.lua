@@ -146,7 +146,7 @@ function checkParameters()
 	end
 
 	if NumberOfCycles == "no_value" then
-		NumberOfCycles = 200
+		NumberOfCycles = 20
 		Shared.storeNumber(13, NumberOfCycles)
 	end
 
@@ -171,7 +171,7 @@ val = true
 function TakeStep()
 	if state_set_positions then
 		inititializeRobots()
-	elseif OreCount == OreCapacity then
+	elseif OreCount == OreCapacity or Core.time() >= NumberOfCycles then
 		sendFull()
 	end
 end
