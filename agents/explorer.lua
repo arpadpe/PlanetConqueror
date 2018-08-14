@@ -13,6 +13,8 @@ AgentMovement = require "modules/agent_movement"
 AgentScanner = require "modules/agent_scanner"
 AgentBattery = require "modules/agent_battery"
 
+Descriptions = require "modules/event_descriptions"
+
 ore_table = {}
 ore_send = {}
 people_ID_table = {}
@@ -168,7 +170,7 @@ function takeStep()
                     state_scanning = true
                     state_initial = false
                     list_robots = Shared.getTable(ROBOTS)
-                    list_transporters = list_robots[baseID].transporters
+                    list_transporters = list_robots[BaseID].transporters
                     print("Number of transporters " .. #list_transporters)
                 end
 

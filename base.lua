@@ -28,6 +28,7 @@ Utility = require "ranalib_utility"
 Agent = require "ranalib_agent"
 Shared = require "ranalib_shared"
 Event = require "ranalib_event"
+Core = require "ranalib_core"
 
 PlanetScanner = require "modules/planet_scanner"
 Descriptions = require "modules/event_descriptions"
@@ -44,13 +45,18 @@ function InitializeAgent()
 	PositionX = math.floor(PositionX)
 	PositionY = math.floor(PositionY)
 
-	GridMove = true
-	StepMultiple = 10000
+	Agent.changeColor{r=255, g=255, b=255}
 
-	OreCapacity = 5 			-- C
+	os.execute( "mkdir results" )
+
+	File = io.open("results/log_" .. os.time() .. ".csv", "w+")
+
+	GridMove = true
+
+	OreCapacity = 3				-- C
 	CommunicationScope = 50 	-- I
-	ExplorersNumber = 1			-- X
-	TransportersNumber = 1		-- Y
+	ExplorersNumber = 2			-- X
+	TransportersNumber = 4		-- Y
 	PerceptionScope = 8			-- P
 
 	OreCount = 0
@@ -60,6 +66,8 @@ function InitializeAgent()
 	end
 
 	explorers = {}
+	--[[
+	]]
 	for i = 1, ExplorersNumber do
 		local agentID = Agent.addAgent("agents/explorer.lua", PositionX, PositionY)
 		table.insert(explorers, agentID)
@@ -70,6 +78,8 @@ function InitializeAgent()
 		local agentID = Agent.addAgent("agents/transporter.lua", PositionX, PositionY)
 		table.insert(transporters, agentID)
 	end
+
+	sentFull = {}
 
 	ShareTable()
 end
@@ -94,6 +104,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 				OreCount = OreCount + oreNo
 			end
 			say("Base #: " .. ID .. " received " .. oreNo .. " ores from: " .. sourceID .. " current ore count: " .. OreCount)
+			File:write("t:" .. Core.time() .. ",base id:" .. ID .. ",received ores:" .. oreNo .. ",from:" .. sourceID .. ",\n")
 		end
 	end
 end
@@ -103,11 +114,20 @@ function inititializeRobots()
 		local targetID = explorers[i]
 		Event.emit{targetID=targetID, description=Descriptions.INIT, table=calculatePositionForExplorer(i, #explorers)}
 		say("Base #: " .. ID .. " sending init message to " .. targetID)
+		File:write("t:" .. Core.time() .. ",base id:" .. ID .. ",explorer send init:" .. targetID .. ",\n")
 	end
 	for i=1, #transporters do
 		local targetID = transporters[i]
 		Event.emit{targetID=targetID, description=Descriptions.INIT}
 		say("Base #: " .. ID .. " sending init message to " .. targetID)
+		File:write("t:" .. Core.time() .. ",base id:" .. ID .. ",transporter send init:" .. targetID .. ",\n")
+		--[[
+		ores = {}
+		table.insert(ores, {x=PositionX+5, y=PositionY+5})
+		table.insert(ores, {x=PositionX+10, y=PositionY+10})
+		table.insert(ores, {x=PositionX+45, y=PositionY+15})
+		Event.emit{targetID=targetID, description=Descriptions.OREPOS, table=ores}
+		]]
 	end
 	state_set_positions = false
 end
@@ -145,12 +165,17 @@ function calculatePositionForExplorer( index, totalExplorers)
 end
 
 function sendFull()
-	say("Base #: " .. ID .. " is full, sending messages")
-	local ids = PlanetScanner.get_ids_in_range(CommunicationScope)
-	for i=1, #ids do
-		local targetID = ids[i]
-		Event.emit{targetID=targetID, description=Descriptions.FULL, table={baseID=ID}}
-		say("Base #: " .. ID .. " sending full message to " .. targetID)
+	if #sentFull < #explorers + #transporters then
+
+		local ids = PlanetScanner.get_ids_in_range(CommunicationScope)
+		for i=1, #ids do
+			local targetID = ids[i]
+			if sentFull[targetID] == nil then
+				sentFull[targetID] = targetID
+				Event.emit{targetID=targetID, description=Descriptions.FULL, table={baseID=ID}}
+				say("Base #: " .. ID .. " sending full message to " .. targetID)
+			end
+		end
 	end
 end
 
@@ -161,4 +186,10 @@ function ShareTable()
 	end
 	robotsTable[ID] = {explorers=explorers, transporters=transporters}
 	Shared.storeTable(ROBOTS, robotsTable)
+	File:write("t:" .. Core.time() .. ",base id:" .. ID .. ",sharedTable,\n")
+end
+
+function cleanUp()
+	File:write("t:" .. Core.time() .. ",base id:" .. ID .. ",orecount:" .. OreCount .. ",\n")
+	File:close()
 end

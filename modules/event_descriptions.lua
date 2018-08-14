@@ -14,4 +14,6 @@ eventDescriptions.ORE = "ore"
 
 eventDescriptions.OREPOS = "ore_pos"
 
+eventDescriptions.ROBOTS = "robots"
+
 return eventDescriptions

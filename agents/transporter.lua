@@ -68,7 +68,7 @@ function InitializeAgent()
     PickupCost = 0
     MemorySize = 15             -- S
     MaxCycles = 100000          -- T
-    CarriageCapacity = 25       -- W
+    CarriageCapacity = 3       -- W
     OreCount = 0
 
     DestinationX = PositionX
@@ -99,8 +99,8 @@ function TakeStep()
         sendAcceptMessage()
         state_accept_ores = false
         determineNextAction()
-        
-    elseif state_moving then
+
+    elseif state_moving and Memory[2] ~= nil then
         if not Moving then
             move()
         end
@@ -111,6 +111,20 @@ function TakeStep()
         else
             --print("Not there yet")
         end
+
+    elseif state_forward_full then
+        forwardMessage()
+        Memory[2] = Memory[1]
+        state_moving = true
+        state_forward_full = false
+        state_deposit = false
+        state_return_to_base = false
+        state_pick_up = false
+        state_forward_full = false
+        state_accept_ores = false
+        state_done = false
+        state_wait_new_ores = false
+        state_return_to_base = true
     
     elseif state_deposit then
         depositOres()
@@ -122,13 +136,6 @@ function TakeStep()
         pickUpOre()
         state_pick_up = false
         determineNextAction()
-
-    elseif state_forward_full then
-        forwardMessage()
-        Memory[2] = Memory[1]
-        state_moving = true
-        state_forward_full = false
-        state_return_to_base = true
 
     elseif state_done then
         sendDoneMessage()
@@ -157,6 +164,14 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
         local baseFullId = eventTable[Descriptions.BASEID]
         if baseFullId == BaseID then
             state_forward_full = true
+            state_moving = false
+            state_deposit = false
+            state_pick_up = false
+            state_forward_full = false
+            state_accept_ores = false
+            state_done = false
+            state_wait_new_ores = false
+            state_return_to_base = true
             say("Transporter #: " .. ID .. " received base full for " .. baseFullId .. " forwarding and returning to base")
         end
 
@@ -205,7 +220,7 @@ function determineNextAction()
                 return
 
             else -- low on energy, return to base
-                say("Transporter #: " .. ID .. " is low on energy, returning to base ")
+                say("Transporter #: " .. ID .. " is low on energy ".. CurrentEnergy .. ", returning to base ")
                 print("CurrentEnergy " .. CurrentEnergy)
                 state_deposit = true
                 state_moving = true
@@ -225,6 +240,13 @@ function determineNextAction()
         state_deposit = true
         state_moving = true
         Memory[2] = {x=PositionX, y=PositionY}
+        return
+    end
+
+    if OreCount == CarriageCapacity then -- storage is full, deposit ores
+        say("Transporter #: " .. ID .. " storage full, returning to base ")
+        state_deposit = true
+        state_moving = true
         return
     end
 

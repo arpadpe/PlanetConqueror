@@ -106,12 +106,38 @@ function planetMovement.advance_position(d_x, d_y)
     end
 
     -- move if the square is empty
-    if not Collision.checkCollision(PositionX+d_x,PositionY+d_y) then
+    if (BasePosition.x == PositionX+d_x and BasePosition.y == PositionY+d_y) or not Collision.checkCollision(PositionX+d_x,PositionY+d_y) then
         Move.to{x=PositionX+d_x, y=PositionY+d_y}
         return true
     else 
         return false
     end
+end
+
+function planetMovement.get_random_pos(range)
+	local random = Stat.randomInteger(0, 7)
+
+	local random_pos = {}
+
+	if random == 0 then
+		random_pos = {x=PositionX+range % ENV_WIDTH, y=PositionY % ENV_HEIGHT}
+	elseif random == 1 then
+		random_pos = {x=PositionX+range % ENV_WIDTH, y=PositionY+range % ENV_HEIGHT}
+	elseif random == 2 then
+		random_pos = {x=PositionX % ENV_WIDTH, y=PositionY+range % ENV_HEIGHT}
+	elseif random == 3 then
+		random_pos = {x=PositionX-range % ENV_WIDTH, y=PositionY+range % ENV_HEIGHT}
+	elseif random == 4 then
+		random_pos = {x=PositionX-range % ENV_WIDTH, y=PositionY % ENV_HEIGHT}
+	elseif random == 5 then
+		random_pos = {x=PositionX-range % ENV_WIDTH, y=PositionY-range % ENV_HEIGHT}
+	elseif random == 6 then
+		random_pos = {x=PositionX % ENV_WIDTH, y=PositionY-range % ENV_HEIGHT}
+	elseif random == 7 then
+		random_pos = {x=PositionX+range % ENV_WIDTH, y=PositionY-range % ENV_HEIGHT}
+	end
+
+	return random_pos
 end
 
 return planetMovement
