@@ -66,7 +66,9 @@ function InitializeAgent()
 	NumberOfCycles = Shared.getNumber(13)			-- T
 	CarriageCapacity = Shared.getNumber(14)			-- W
 	ExplorersNumber = Shared.getNumber(15)			-- X
-	TransportersNumber = Shared.getNumber(16)		-- Y         
+	TransportersNumber = Shared.getNumber(16)		-- Y
+
+	checkParameters()   
 
 	OreCount = 0
 
@@ -91,6 +93,78 @@ function InitializeAgent()
 	sentFull = {}
 
 	ShareTable()
+end
+
+function checkParameters()
+	if OreCapacity == "no_value" then
+		OreCapacity = 50
+		Shared.storeNumber(3, OreCapacity)
+	end
+
+	if OreDensity == "no_value" then
+		OreDensity = 5
+		Shared.storeNumber(4, 5)
+	end
+
+	if RobotEnergy == "no_value" then
+		RobotEnergy = 150
+		Shared.storeNumber(5, RobotEnergy)
+	end
+
+	if GridSize == "no_value" then
+		GridSize = 200
+		Shared.storeNumber(6, GridSize)
+	end
+
+	if CommunicationScope == "no_value" then
+		CommunicationScope = 25
+		Shared.storeNumber(7, CommunicationScope)
+	end
+
+	if CoordinationMode == "no_value" then
+		CoordinationMode = 1
+		Shared.storeNumber(8, CoordinationMode)
+	end
+
+	if NumberOfBases == "no_value" then
+		NumberOfBases = 1
+		Shared.storeNumber(9, NumberOfBases)
+	end
+
+	if PerceptionScope == "no_value" then
+		PerceptionScope = 5
+		Shared.storeNumber(10, PerceptionScope)
+	end
+
+	if MotionCost == "no_value" then
+		MotionCost = 1
+		Shared.storeNumber(11, MotionCost)
+	end
+
+	if MemorySize == "no_value" then
+		MemorySize = 5
+		Shared.storeNumber(12, MemorySize)
+	end
+
+	if NumberOfCycles == "no_value" then
+		NumberOfCycles = 200
+		Shared.storeNumber(13, NumberOfCycles)
+	end
+
+	if CarriageCapacity == "no_value" then
+		CarriageCapacity = 10
+		Shared.storeNumber(14, CarriageCapacity)
+	end
+
+	if ExplorersNumber == "no_value" then
+		ExplorersNumber = 3
+		Shared.storeNumber(15, ExplorersNumber)
+	end
+
+	if TransportersNumber == "no_value" then
+		TransportersNumber = 3
+		Shared.storeNumber(16, TransportersNumber)
+	end
 end
 
 val = true
