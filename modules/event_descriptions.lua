@@ -4,6 +4,8 @@ eventDescriptions.ACCEPT = "accept"
 
 eventDescriptions.BASEID = "baseID"
 
+eventDescriptions.DONE = "done"
+
 eventDescriptions.FULL = "full"
 
 eventDescriptions.INIT = "init"
