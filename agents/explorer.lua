@@ -21,7 +21,7 @@ ore_color = {255,255,0}
 last_package_sent = false
 direction_base = true
 transporterID = 0
-
+MessageCost = 1
 D = 30 -- % ore
 P = 7-- minimum value scope = 3
 Y = 2 --number of transporters
@@ -49,7 +49,7 @@ NumberCyclesWaitingAnswer = 0
 CommunicationScope = 50     -- I
 PerceptionScope = 5         -- P
 CostMoving = 2
-
+trans_working = false
 Energy = 150                -- E
 CurrentEnergy = Energy
 FULL = "full"
@@ -58,6 +58,7 @@ INIT = "init"
 ORE_POS = "ore_pos"
 ACCEPT = "accept"
 ROBOTS = "robots"
+DONE = "done"
 list_transporters = {}
 baseID = 0
 delta_y =0 
@@ -97,10 +98,12 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
             -- TODO: Add logic to handle coordination mode
        -- end
     elseif eventDescription == ACCEPT then 
+        trans_working = true
         package_accepted = true 
         waiting_answer = false
         say("EXPLORER #: " .. ID .. " got accepted by transporter # " .. sourceID)
         if last_package_sent then
+            trans_working = false
             say("Explorer #: " .. ID .. " has sent all the packages in this position")
             state_sending = false
             state_moving = true
@@ -113,7 +116,14 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
             state_scanning = true 
             state_sending = false 
         end
-    
+    elseif eventDescription == DONE then
+        say("Explorer # "..ID.." got message DONE from "..sourceID)
+        for i =1, #trans_contacted do
+            if sourceID == trans_contacted[i] then 
+                table.remove(trans_contacted, i)
+
+            end
+        end
 	end
 end
 
@@ -233,7 +243,7 @@ function takeStep()
 
             else -- #ore_found ~= 0 then
                 people_ID_table = AgentScanner.scanning("people")
-                if (#people_ID_table - #trans_contacted) > 0 then -- I have a list and tranporters close to me (excluding me)
+                if (#people_ID_table - #trans_contacted) > 0  then -- I have a list and tranporters close to me (excluding me)
                     state_sending = true
                 else -- no transporters in my communication scope
                     state_waiting = true 
@@ -247,7 +257,7 @@ function takeStep()
         --INCREASING SCOPE----------------------------------------------------------------------------------------------
         -------------------------------------------------------------------------------------------------------
         elseif state_increase_scope then
-            l_print("Explorer #: " .. ID .. " is increasing scope")
+            --l_print("Explorer #: " .. ID .. " is increasing scope")
             if MemorySize > (PerceptionScope*PerceptionScope/2) then
                 --say("Large memory")
                 if (PerceptionScope/CostMoving) > 1.5 then 
@@ -292,11 +302,11 @@ function takeStep()
         --SENDING----------------------------------------------------------------------------------------------
         -------------------------------------------------------------------------------------------------------
         elseif state_sending then
-            say("Explorer #: " .. ID .. "is in state_sending")
+           -- say("Explorer #: " .. ID .. "is in state_sending")
             --- ADD BATTERY CONTROL
             if AgentBattery.low_battery_sending() then 
                 --nothing
-            elseif (#people_ID_table - #trans_contacted) <= 0 then
+            elseif (#people_ID_table - #trans_contacted)  <= 0 and not waiting_answer then
                 state_sending = false
                 state_waiting = true 
             elseif not waiting_answer then
@@ -330,11 +340,11 @@ function takeStep()
                 CurrentEnergy = CurrentEnergy - MessageCost
                 say("Explorer #: " .. ID .. " sent message to ID "..targetID)
                 waiting_answer = true
-                
-            elseif waiting_answer then
-                say("Explorer # "..ID.." is waiting an answer")
+            end
+            if waiting_answer then
+              -- say("Explorer # "..ID.." is waiting an answer")
                 NumberCyclesWaitingAnswer = NumberCyclesWaitingAnswer + 1
-                if NumberCyclesWaitingAnswer > math.floor(1.5*CommunicationScope) then -- we have waited enough 
+                if NumberCyclesWaitingAnswer > math.floor(1.5*CommunicationScope) + 2 then -- we have waited enough 
                     say("Explorer # "..ID.." was IGNORED")
                     waiting_answer = false 
                     NumberCyclesWaitingAnswer = 0
@@ -357,16 +367,16 @@ function takeStep()
         --WAITING----------------------------------------------------------------------------------------------
         -------------------------------------------------------------------------------------------------------
         elseif state_waiting then
-            say("Explorer #: " .. ID .. " is waiting for transporters")
+           -- say("Explorer #: " .. ID .. " is waiting for transporters")
             distance_to_base = AgentMovement.dist_to_base()
             NumberCyclesWaiting = NumberCyclesWaiting + 1
             people_ID_table = AgentScanner.scanning("people")
-            if #people_ID_table > 0 then -- I have a list and tranporters close to me (excluding me)
+            if (#people_ID_table - #trans_contacted) > 0 then -- I have a list and tranporters close to me (excluding me)
                 state_sending = true
                 state_waiting = false
                 NumberCyclesWaiting = 0
             end
-            if NumberCyclesWaiting >= distance_to_base then 
+            if NumberCyclesWaiting >= distance_to_base and not trans_working then 
                 say("Explorer #: " .. ID .. " has waited enough, it moves")
                 state_moving = true -- ¿ Maybe it's useful to do a clever movement ...  
                 state_sending = false 

@@ -78,9 +78,9 @@ function agentScanner.scanning(mode)
                 total_number_packages = total_ores/MemorySize
             --[[else 
                 total_number_packages = math.floor(#ore_table/MemorySize)]]
-                l_print("total number packages "..total_ores/MemorySize)
+               -- l_print("total number packages "..total_ores/MemorySize)
             end 
-            say("get numbr packages")
+           -- say("get numbr packages")
             get_number_packages = false
         end
        -- RETURN ORE FOUND IN MEMORY SIZE SLOTS
@@ -102,9 +102,11 @@ function agentScanner.scanning(mode)
         
             for i = 1 , MemorySize do 
                 for j = #ore_found, 1, -1 do
-                    if ore_send[i].x == ore_found[j].x and ore_send[i].y ==ore_found[j].y then 
-                       table.insert(index_list, j)
-                       l_print("j value scanning  "..j)
+                    if ore_found[j]~= nil and ore_send[i] ~= nil then 
+                        if ore_send[i].x == ore_found[j].x and ore_send[i].y ==ore_found[j].y then 
+                        table.insert(index_list, j)
+                        -- l_print("j value scanning  "..j)
+                        end
                     end
                 end
 
@@ -153,7 +155,7 @@ function agentScanner.scanning(mode)
                 for k=1, #ids do 
                     if ids[k]~= ID  then 
                         table.insert(id_table, ids[k])
-                        l_print("id found "..ids[k])
+                     --   l_print("id found "..ids[k])
                         break
                     end
 		        end
