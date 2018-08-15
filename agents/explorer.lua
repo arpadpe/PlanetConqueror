@@ -227,7 +227,7 @@ function takeStep()
                         memory_S[2].y = PositionY
                         CurrentEnergy = Energy 
 
-                        say("Transporter: #"..ID.."energy full "..CurrentEnergy)
+                        say("Explorer: #"..ID.."energy full "..CurrentEnergy)
                         memory_S[3] = nil
                         state_low_battery = false
                         direction_base = true
