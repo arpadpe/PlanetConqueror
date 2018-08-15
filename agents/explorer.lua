@@ -10,7 +10,7 @@ Shared = require "ranalib_shared"
 Event = require "ranalib_event"
 
 AgentMovement = require "modules/agent_movement"
-AgentScanner = require "modules/agent_scanner"
+PlanetScanner = require "modules/planet_scanner"
 AgentBattery = require "modules/agent_battery"
 
 Descriptions = require "modules/event_descriptions"
@@ -46,11 +46,11 @@ trans_contacted = {}
 Energy = Shared.getNumber(5)			    	-- E
 GridSize = Shared.getNumber(6)					-- G
 CommunicationScope = Shared.getNumber(7)		-- I
-CoordinationMode = Shared.getNumber(8)			-- M
+CoordinationMode = Shared.getNumber(8)			-- M 1 Cooperation 0 Competition
 NumberOfBases = Shared.getNumber(9)				-- N
 PerceptionScope = Shared.getNumber(10)			-- P
 MotionCost = Shared.getNumber(11)				-- Q
-MemorySize = Shared.getNumber(12)        		-- S
+MemorySize = Shared.getNumber(12)-1        		-- S
 NumberOfCycles = Shared.getNumber(13)			-- T
 ExplorersNumber = Shared.getNumber(15)			-- X
 TransportersNumber = Shared.getNumber(16)		-- Y 
@@ -64,7 +64,7 @@ trans_working = false
     
 CurrentEnergy = Energy
 
-list_transporters = {}
+robotsTable = {}
 BaseID = 0
 delta_y =0 
 delta_x =0
@@ -73,7 +73,7 @@ function initializeAgent()
 
 
     Agent.changeColor{r=255}
-
+    say("Explorer #: " .. ID .. " has been initialized ")
 	GridMove = true
     Moving = true
     --StepMultiple = 10000
@@ -171,11 +171,8 @@ function takeStep()
                     
                     state_scanning = true
                     state_initial = false
-                    list_robots = Shared.getTable(Descriptions.ROBOTS)
-                    list_transporters = list_robots[BaseID].transporters
-                 --   print("Number of transporters " .. #list_transporters)
-                end
-
+                    robotsTable = Shared.getTable(Descriptions.ROBOTS)
+                end 
             end
 
          -------------------------------------------------------------------------------------------------------
@@ -212,28 +209,34 @@ function takeStep()
                         delta_x = AgentMovement.get_delta_x(PositionX, memory_S[2].x)
                         delta_y = AgentMovement.get_delta_y(PositionY, memory_S[2].y)
                        -- 
-                   --    say(" moving Current position "..PositionX.." "..PositionY)  
-                     --  say(" goal position "..memory_S[2].x.." "..memory_S[2].y)
+                      -- say(" moving Current position "..PositionX.." "..PositionY)  
+                      -- say(" goal position "..memory_S[2].x.." "..memory_S[2].y)
                         if AgentMovement.advance_position(delta_x,delta_y) then --returns true if move success                 
                             CurrentEnergy = CurrentEnergy - MotionCost
                         end
-                     end 
+                    end 
+
                 else 
 
                     if state_low_battery then 
-                        memory_S[2].x = memory_S[3].x 
-                        memory_S[2].y = memory_S[3].y
+
+                        memory_S[2].x = memory_S[1].x 
+                        memory_S[2].y = memory_S[1].y
+
+                        memory_S[1].x = PositionX
+                        memory_S[2].y = PositionY
                         CurrentEnergy = Energy 
-                        say("energy full "..CurrentEnergy)
+
+                        say("Transporter: #"..ID.."energy full "..CurrentEnergy)
                         memory_S[3] = nil
                         state_low_battery = false
                         direction_base = true
                     else
                     --l_print("final x "..PositionX.." final y "..PositionY)
-                    memory_S[2] = nil
-                    state_moving = false
+                        memory_S[2] = nil
+                        state_moving = false
                   --  say("Explorer #: " .. ID .. " has reached the new position ")
-                    state_scanning = true
+                        state_scanning = true
                     end
 
                     if stay_home then 
@@ -258,24 +261,24 @@ function takeStep()
             if AgentBattery.low_battery_scanning() then 
                 --nothing
             else 
-            ore_table = AgentScanner.scanning("ore")
-            CurrentEnergy = CurrentEnergy - PerceptionScope
-            if ore_table == nil then --list is empty increase scope
-               -- l_print("Explorer #: " .. ID .. " has not found ore in this position")
-                state_increase_scope = true
-                state_scanning = false 
+                ore_table = PlanetScanner.get_ores_in_range(PerceptionScope)
+                CurrentEnergy = CurrentEnergy - PerceptionScope
+                if ore_table == nil then --list is empty increase scope
+                -- l_print("Explorer #: " .. ID .. " has not found ore in this position")
+                    state_increase_scope = true
+                    state_scanning = false 
 
 
-            else -- #ore_found ~= 0 then
-                people_ID_table = AgentScanner.scanning("people")
-                if (#people_ID_table - #trans_contacted) > 0  then -- I have a list and tranporters close to me (excluding me)
-                    state_sending = true
-                else -- no transporters in my communication scope
-                    state_waiting = true 
+                else -- #ore_found ~= 0 then
+                    people_ID_table =  get_transporters()
+                    if (#people_ID_table - #trans_contacted) > 0  then -- I have a list and tranporters close to me (excluding me)
+                        state_sending = true
+                    else -- no transporters in my communication scope
+                        state_waiting = true 
+                    end
+                    state_scanning = false
+
                 end
-                state_scanning = false
-
-            end
             end
 
         -------------------------------------------------------------------------------------------------------
@@ -395,7 +398,7 @@ function takeStep()
            -- say("Explorer #: " .. ID .. " is waiting for transporters")
             distance_to_base = AgentMovement.dist_to_base()
             NumberCyclesWaiting = NumberCyclesWaiting + 1
-            people_ID_table = AgentScanner.scanning("people")
+            people_ID_table =  get_transporters()
             if (#people_ID_table - #trans_contacted) > 0 then -- I have a list and tranporters close to me (excluding me)
                 state_sending = true
                 state_waiting = false
@@ -439,9 +442,16 @@ function cleanUp()
 end
 
 function forwardMessage()
-    local ids = AgentScanner.scanning("people")
-    for i=1, #ids do
-        local targetID = ids[i]
+    local people = PlanetScanner.get_ids_in_range(CommunicationScope)
+
+        for i=#people,1,-1  do
+            if robotsTable[BaseID].transporters[i] == nil and robotsTable[BaseID].explorers[i] == nil then
+                table.remove(people, i)
+            end
+        end
+
+    for i=1, #people do
+        local targetID = people[i]
         if targetID ~= ID then
             sendMessage(targetID, Descriptions.FULL, {baseID = BaseID})
         end
@@ -452,5 +462,29 @@ end
 function sendMessage(targetID, eventDescription, eventTable)
     CurrentEnergy = CurrentEnergy - MessageCost
     Event.emit{speed=343,targetID=targetID, description=eventDescription, table=eventTable}
- end
- 
+
+end
+
+
+function get_transporters()
+    people = PlanetScanner.get_ids_in_range(CommunicationScope)
+    if CoordinationMode then -- Cooperative 
+        for i=#people,1,-1  do
+            for k, v in pairs(robotsTable) do 
+      
+                if robotsTable[k].transporters[i] == nil then
+                    table.remove(people, i)
+                end
+            end
+        end
+
+    else --Competitive 
+        for i=#people,1,-1  do
+            if robotsTable[BaseID].transporters[i] == nil then
+                table.remove(people, i)
+            end
+        end
+    end 
+
+    return people
+end
