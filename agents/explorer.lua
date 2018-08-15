@@ -99,7 +99,12 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
             state_forward_full = true
             say("Explorer #: " .. ID .. " received base full for " .. baseFullId .. " forwarding and returning to base")
         end
-    
+    elseif eventDescription == Descriptions.TIMEUP and not stay_home then
+        local baseFullId = eventTable[Descriptions.BASEID]
+        if baseFullId == BaseID then
+            state_forward_full = true
+            say("Explorer #: " .. ID .. " received base full for " .. baseFullId .. " forwarding and returning to base")
+        end
             -- TODO: Add logic to handle coordination mode
        -- end
     elseif eventDescription == Descriptions.ACCEPT then 
