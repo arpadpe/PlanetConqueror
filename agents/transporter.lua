@@ -320,7 +320,7 @@ function handleWaiting()
     end
 
     -- did not find explorers, move
-    Memory[2] = PlanetMovement.get_random_pos(CommunicationScope)
+    Memory[2] = PlanetMovement.get_random_pos(1)
 
     if (PlanetMovement.get_distance_to(Memory[2]) * MotionCost) + (PlanetMovement.get_distance_between(Memory[1], Memory[2]) * MotionCost) <= CurrentEnergy * 0.8 then
         say("Transporter #: " .. ID .. " current position " .. PositionX .. " " .. PositionY)
