@@ -69,8 +69,8 @@ function InitializeAgent()
 	OreCount = 0
 
 	if ID == 1 then
-		Agent.addAgent("painting.lua")
 		checkParameters() 
+		Agent.addAgent("painting.lua")
 	end
 
 	os.execute( "mkdir results" )
@@ -107,7 +107,7 @@ function checkParameters()
 	end
 
 	if OreDensity == "no_value" then
-		OreDensity = 5
+		OreDensity = 50
 		Shared.storeNumber(4, 5)
 	end
 
@@ -152,7 +152,7 @@ function checkParameters()
 	end
 
 	if NumberOfCycles == "no_value" then
-		NumberOfCycles = 20
+		NumberOfCycles = 200
 		Shared.storeNumber(13, NumberOfCycles)
 	end
 
@@ -162,13 +162,12 @@ function checkParameters()
 	end
 
 	if ExplorersNumber == "no_value" then
-		ExplorersNumber = 0
+		ExplorersNumber = 2
 		Shared.storeNumber(15, ExplorersNumber)
 	end
 
 	if TransportersNumber == "no_value" then
-		print("boooyahh")
-		TransportersNumber = 1
+		TransportersNumber = 3
 		Shared.storeNumber(16, TransportersNumber)
 	end
 end
@@ -267,6 +266,7 @@ function sendFull()
 			local targetID = ids[i]
 			if sentReturn[targetID] == nil then
 
+				--[[
 				if CoordinationMode == 0 then -- competitive mode
 
 					if explorers[targetID] ~= nil or transporters[targetID] ~= nil then
@@ -276,12 +276,12 @@ function sendFull()
 					end
 
 	            else -- cooperative
-	                
+	                ]]
 					Event.emit{targetID=targetID, description=Descriptions.FULL, table={baseID=ID}}
 					say("Base #: " .. ID .. " sending times up message to " .. targetID)
 					sentReturn[targetID] = targetID
 
-	            end
+	            --end
 			end
 		end
 	end
@@ -295,6 +295,7 @@ function sendTimeUp()
 			local targetID = ids[i]
 			if sentReturn[targetID] == nil then
 
+				--[[
 				if CoordinationMode == 0 then -- competitive mode
 
 					if explorers[targetID] ~= nil or transporters[targetID] ~= nil then
@@ -304,12 +305,12 @@ function sendTimeUp()
 					end
 
 	            else -- cooperative
-	                
+	                ]]
 					Event.emit{targetID=targetID, description=Descriptions.TIMEUP, table={baseID=ID}}
 					say("Base #: " .. ID .. " sending times up message to " .. targetID)
 					sentReturn[targetID] = targetID
 
-	            end
+	            --end
 
 			end
 		end
