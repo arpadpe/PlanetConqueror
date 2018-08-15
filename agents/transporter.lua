@@ -182,7 +182,6 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
         BaseID = sourceID
         state_init = false
         say("Transporter #: " .. ID .. " received init from " .. sourceID)
-        print("base: " .. sourceX .. "  " .. sourceY)
         table.insert(Memory, {x=sourceX, y=sourceY})
         robotsTable = Shared.getTable(Descriptions.ROBOTS)
 	elseif eventDescription == Descriptions.FULL and not (state_return_to_base or state_forward_full) then
@@ -200,8 +199,6 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
             say("Transporter #: " .. ID .. " received base full for " .. baseFullId .. " forwarding and returning to base")
         end
 
-        -- TODO: Add logic to handle coordination mode
-
     elseif eventDescription == Descriptions.TIMEUP and not (state_return_to_base or state_forward_time_up) then
         local baseTimeUpId = eventTable[Descriptions.BASEID]
         if baseTimeUpId == BaseID then
@@ -216,9 +213,6 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
             state_return_to_base = true
             say("Transporter #: " .. ID .. " received base time up for " .. baseTimeUpId .. " forwarding and returning to base")
         end
-
-        -- TODO: Add logic to handle coordination mode
-
 
     elseif eventDescription == Descriptions.OREPOS then
         say("Transporter #: " .. ID .. " received " .. #eventTable ..  " ore positions from " .. sourceID)
@@ -235,8 +229,6 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 
         local freeSpace = MemorySize - index
 
-        print(freeSpace .. " " .. #Memory)
-
         if #oreTable <= freeSpace then
 
             for j = 1, #oreTable do
@@ -247,7 +239,6 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
             AcceptID = sourceID
 
             state_accept_ores = true
-            print("to accept")
         end
 	end
 end
@@ -310,19 +301,22 @@ function handleWaiting()
 
     for i=1, #ids do
 
-        if robotsTable[BaseID].explorers[i] ~= nil then
-            return
-        end
+        if CoordinationMode == 0 then -- competitive mode
 
-        --[[
-        for j=1, #robotsTable[BaseID].explorers do
-
-            if ids[i] == robotsTable[BaseID].explorers[j] then
+            if robotsTable[BaseID].explorers[i] ~= nil then
                 return
             end
 
+        else -- cooperative
+
+            for k, v in pairs(robotsTable) do
+                if v.explorers[i] ~= nil then 
+                    return 
+                end
+            end
+
         end
-        ]]
+
     end
 
     -- did not find explorers, move
@@ -358,7 +352,17 @@ function forwardFullMessage()
     for i=1, #ids do
         local targetID = ids[i]
         if targetID ~= ID then
-            sendMessage(targetID, Descriptions.FULL, {baseID = BaseID})
+            if CoordinationMode == 0 then -- competitive mode
+
+                if robotsTable[BaseID].explorers[targetID] ~= nil or robotsTable[BaseID].transporters[targetID] then
+                    sendMessage(targetID, Descriptions.FULL, {baseID = BaseID})
+                end
+
+            else -- cooperative
+                
+                sendMessage(targetID, Descriptions.FULL, {baseID = BaseID}) 
+
+            end
         end
     end
 end
@@ -368,7 +372,17 @@ function forwardTimeUpMessage()
     for i=1, #ids do
         local targetID = ids[i]
         if targetID ~= ID then
-            sendMessage(targetID, Descriptions.TIMEUP, {baseID = BaseID})
+            if CoordinationMode == 0 then -- competitive mode
+
+                if robotsTable[BaseID].explorers[targetID] ~= nil or robotsTable[BaseID].transporters[targetID] then
+                    sendMessage(targetID, Descriptions.TIMEUP, {baseID = BaseID})
+                end
+
+            else -- cooperative
+                
+                sendMessage(targetID, Descriptions.TIMEUP, {baseID = BaseID}) 
+
+            end
         end
     end
 end

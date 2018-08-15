@@ -37,6 +37,8 @@ TableHelper = require "modules/table_helper"
 state_set_positions = true
 state_log_progress = true
 
+TimeFull = nil
+
 -- Initialization of the agent.
 function InitializeAgent()
 	
@@ -73,24 +75,22 @@ function InitializeAgent()
 
 	os.execute( "mkdir results" )
 
-	File = io.open("results/simulation_" .. os.time() .."_" .. Shared.getNumber(2) .. "_" .. OreCapacity .. "_" .. OreDensity .. "_" 
-		.. RobotEnergy .. "_" .. GridSize .. "_" .. CommunicationScope .. "_" .. CoordinationMode .. "_" .. NumberOfBases .. "_" 
-		.. PerceptionScope .. "_" .. MotionCost .. "_" .. MemorySize .. "_" .. NumberOfCycles .. "_" .. CarriageCapacity .. "_" 
-		.. ExplorersNumber .. "_" .. TransportersNumber .. ".csv", "w+")
+	File = io.open("results/simulation_C:" .. OreCapacity .. "_D:" .. OreDensity .. "_E:" 
+		.. RobotEnergy .. "_G:" .. GridSize .. "_I:" .. CommunicationScope .. "_M:" .. CoordinationMode .. "_N:" .. NumberOfBases .. "_P:" 
+		.. PerceptionScope .. "_Q:" .. MotionCost .. "_S:" .. MemorySize .. "_T:" .. NumberOfCycles .. "_W:" .. CarriageCapacity .. "_X:" 
+		.. ExplorersNumber .. "_Y:" .. TransportersNumber .. ".csv", "a")
 
 	explorers = {}
 	--[[
 	]]
 	for i = 1, ExplorersNumber do
 		local agentID = Agent.addAgent("agents/explorer.lua", PositionX, PositionY)
-		--table.insert(explorers, agentID)
 		explorers[agentID] = agentID
 	end
 
 	transporters = {}
 	for i = 1, TransportersNumber do
 		local agentID = Agent.addAgent("agents/transporter.lua", PositionX, PositionY)
-		--table.insert(transporters, agentID)
 		transporters[agentID] = agentID
 	end
 
@@ -167,6 +167,7 @@ function checkParameters()
 	end
 
 	if TransportersNumber == "no_value" then
+		print("boooyahh")
 		TransportersNumber = 1
 		Shared.storeNumber(16, TransportersNumber)
 	end
@@ -182,7 +183,6 @@ function TakeStep()
 		sendFull()
 
 		if state_log_progress then
-			logProgress()
 			state_log_progress = false
 		end
 		
@@ -191,7 +191,6 @@ function TakeStep()
 		sendTimeUp()
 
 		if state_log_progress and Core.time() >= NumberOfCycles * 2 then
-			logProgress()
 			state_log_progress = false
 		end
 	end
@@ -203,11 +202,11 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 			local oreNo = eventTable[Descriptions.ORE]
 			if OreCount + oreNo > OreCapacity then
 				OreCount = OreCapacity
+				TimeFull = Core.time()
 			else
 				OreCount = OreCount + oreNo
 			end
 			say("Base #: " .. ID .. " received " .. oreNo .. " ores from: " .. sourceID .. " current ore count: " .. OreCount)
-			logProgress()
 		end
 	end
 end
@@ -215,23 +214,15 @@ end
 function inititializeRobots()
 
 	for i, v in pairs(explorers) do
-		local targetID = explorers[i]
+		local targetID = v
 		Event.emit{targetID=targetID, description=Descriptions.INIT, table=calculatePositionForExplorer(i, #explorers)}
 		say("Base #: " .. ID .. " sending init message to " .. targetID)
 	end
 
 	for i, v in pairs(transporters) do
-		local targetID = transporters[i]
+		local targetID = v
 		Event.emit{targetID=targetID, description=Descriptions.INIT}
 		say("Base #: " .. ID .. " sending init message to " .. targetID)
-		--File:write("t:" .. Core.time() .. ",base id:" .. ID .. ",transporter send init:" .. targetID .. ",\n")
-		--[[
-		ores = {}
-		table.insert(ores, {x=PositionX+5, y=PositionY+5})
-		table.insert(ores, {x=PositionX+10, y=PositionY+10})
-		table.insert(ores, {x=PositionX+45, y=PositionY+15})
-		Event.emit{targetID=targetID, description=Descriptions.OREPOS, table=ores}
-		]]
 	end
 	state_set_positions = false
 end
@@ -275,11 +266,22 @@ function sendFull()
 		for i=1, #ids do
 			local targetID = ids[i]
 			if sentReturn[targetID] == nil then
-				Event.emit{targetID=targetID, description=Descriptions.FULL, table={baseID=ID}}
-				say("Base #: " .. ID .. " sending full message to " .. targetID)
-				if explorers[targetID] ~= nil or transporters[targetID] ~= nil then
+
+				if CoordinationMode == 0 then -- competitive mode
+
+					if explorers[targetID] ~= nil or transporters[targetID] ~= nil then
+						Event.emit{targetID=targetID, description=Descriptions.FULL, table={baseID=ID}}
+						say("Base #: " .. ID .. " sending times up message to " .. targetID)
+						sentReturn[targetID] = targetID
+					end
+
+	            else -- cooperative
+	                
+					Event.emit{targetID=targetID, description=Descriptions.FULL, table={baseID=ID}}
+					say("Base #: " .. ID .. " sending times up message to " .. targetID)
 					sentReturn[targetID] = targetID
-				end
+
+	            end
 			end
 		end
 	end
@@ -292,11 +294,23 @@ function sendTimeUp()
 		for i=1, #ids do
 			local targetID = ids[i]
 			if sentReturn[targetID] == nil then
-				Event.emit{targetID=targetID, description=Descriptions.TIMEUP, table={baseID=ID}}
-				say("Base #: " .. ID .. " sending times up message to " .. targetID)
-				if explorers[targetID] ~= nil or transporters[targetID] ~= nil then
+
+				if CoordinationMode == 0 then -- competitive mode
+
+					if explorers[targetID] ~= nil or transporters[targetID] ~= nil then
+						Event.emit{targetID=targetID, description=Descriptions.TIMEUP, table={baseID=ID}}
+						say("Base #: " .. ID .. " sending times up message to " .. targetID)
+						sentReturn[targetID] = targetID
+					end
+
+	            else -- cooperative
+	                
+					Event.emit{targetID=targetID, description=Descriptions.TIMEUP, table={baseID=ID}}
+					say("Base #: " .. ID .. " sending times up message to " .. targetID)
 					sentReturn[targetID] = targetID
-				end
+
+	            end
+
 			end
 		end
 	end
@@ -313,11 +327,15 @@ end
 
 function logProgress()
 	say("Base #: " .. ID .. " writing progress to file")
-	File:write("t," .. Core.time() .. ",base_id," .. ID .. ",robots," .. TableHelper.tablelength(sentReturn) .. ",total," .. TableHelper.tablelength(explorers) + TableHelper.tablelength(transporters) 
-		.. ",ores," .. OreCount .. ",capacity," .. OreCapacity .. ",\n")
+	
+	
 end
 
 function cleanUp()
-	logProgress()
+	if TimeFull ~= nil then
+		File:write(Shared.getNumber(2) .. "," .. TimeFull .. "," .. ID .. "," .. TableHelper.tablelength(sentReturn) .. "," .. TableHelper.tablelength(explorers) + TableHelper.tablelength(transporters) .. "," .. OreCount .. "," .. OreCapacity .. "\n")
+	else
+		File:write(Shared.getNumber(2) .. "," .. Core.time() .. "," .. ID .. "," .. TableHelper.tablelength(sentReturn) .. "," .. TableHelper.tablelength(explorers) + TableHelper.tablelength(transporters) .. "," .. OreCount .. "," .. OreCapacity .. "\n")
+	end
 	File:close()
 end
