@@ -87,14 +87,14 @@ function agentMovement.get_new_position()
     table.insert(position_table, 3, {x = PositionX, y = PositionY - PerceptionScope})
     table.insert(position_table, 4, {x = PositionX, y = PositionY + PerceptionScope}) 
     goal = position_table[Stat.randomInteger(1,#position_table)]
-    if goal.x > 200 then 
+    if goal.x >= 200 then 
         goal.x = goal.x - ENV_WIDTH -1 
-    elseif goal.x < 0 then
+    elseif goal.x <= 0 then
         goal.x = goal.x + ENV_WIDTH + 1
     end
-    if goal.y > 200 then 
+    if goal.y >= 200 then 
         goal.y = goal.y - ENV_HEIGHT -1 
-    elseif goal.y < 0 then
+    elseif goal.y <= 0 then
         goal.y = goal.y + ENV_HEIGHT + 1
     end
     return goal
