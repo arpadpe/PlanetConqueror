@@ -55,8 +55,10 @@ function planetScanner.get_ids_in_range(range)
         for j=1, #y_scan do
 			local ids = Collision.checkPosition(x_scan[i],y_scan[j])
 
-			for k=1, #ids do 
-		    	table.insert(id_table, ids[k])
+            for k=1, #ids do 
+                if ids[k] ~= ID then 
+                    table.insert(id_table, ids[k])
+                end 
 		    end
         end
 	end
