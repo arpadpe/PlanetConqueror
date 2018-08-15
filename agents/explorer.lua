@@ -449,11 +449,11 @@ end
 function forwardMessage()
     local people = PlanetScanner.get_ids_in_range(CommunicationScope)
 
-        for i=#people,1,-1  do
+       --[[ for i=#people,1,-1  do
             if robotsTable[BaseID].transporters[i] == nil and robotsTable[BaseID].explorers[i] == nil then
                 table.remove(people, i)
             end
-        end
+        end]]
 
     for i=1, #people do
         local targetID = people[i]
@@ -473,7 +473,7 @@ end
 
 function get_transporters()
     people = PlanetScanner.get_ids_in_range(CommunicationScope)
-    if CoordinationMode then -- Cooperative 
+    --[[if CoordinationMode == 1 then -- Cooperative 
         for i=#people,1,-1  do
             for k, v in pairs(robotsTable) do 
       
@@ -483,13 +483,13 @@ function get_transporters()
             end
         end
 
-    else --Competitive 
+    elseif CoordinationMode == 0 then --Competitive 
         for i=#people,1,-1  do
             if robotsTable[BaseID].transporters[i] == nil then
                 table.remove(people, i)
             end
         end
-    end 
+    end ]]
 
     return people
 end
