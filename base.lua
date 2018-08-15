@@ -32,8 +32,10 @@ Core = require "ranalib_core"
 
 PlanetScanner = require "modules/planet_scanner"
 Descriptions = require "modules/event_descriptions"
+TableHelper = require "modules/table_helper"
 
 state_set_positions = true
+state_log_progress = true
 
 -- Initialization of the agent.
 function InitializeAgent()
@@ -44,10 +46,6 @@ function InitializeAgent()
 	PositionY = math.floor(PositionY)
 
 	Agent.changeColor{r=255, g=255, b=255}
-
-	os.execute( "mkdir results" )
-
-	File = io.open("results/log_" .. os.time() .. ".csv", "w+")
 
 	GridMove = true
 
@@ -72,6 +70,13 @@ function InitializeAgent()
 		Agent.addAgent("painting.lua")
 		checkParameters() 
 	end
+
+	os.execute( "mkdir results" )
+
+	File = io.open("results/simulation_" .. os.time() .."_" .. Shared.getNumber(2) .. "_" .. OreCapacity .. "_" .. OreDensity .. "_" 
+		.. RobotEnergy .. "_" .. GridSize .. "_" .. CommunicationScope .. "_" .. CoordinationMode .. "_" .. NumberOfBases .. "_" 
+		.. PerceptionScope .. "_" .. MotionCost .. "_" .. MemorySize .. "_" .. NumberOfCycles .. "_" .. CarriageCapacity .. "_" 
+		.. ExplorersNumber .. "_" .. TransportersNumber .. ".csv", "w+")
 
 	explorers = {}
 	--[[
@@ -157,12 +162,12 @@ function checkParameters()
 	end
 
 	if ExplorersNumber == "no_value" then
-		ExplorersNumber = 3
+		ExplorersNumber = 0
 		Shared.storeNumber(15, ExplorersNumber)
 	end
 
 	if TransportersNumber == "no_value" then
-		TransportersNumber = 3
+		TransportersNumber = 1
 		Shared.storeNumber(16, TransportersNumber)
 	end
 end
@@ -172,11 +177,23 @@ val = true
 function TakeStep()
 	if state_set_positions then
 		inititializeRobots()
+
+	elseif OreCount == OreCapacity and Core.time() < NumberOfCycles then
+		sendFull()
+
+		if state_log_progress then
+			logProgress()
+			state_log_progress = false
+		end
+		
+
 	elseif Core.time() >= NumberOfCycles then
 		sendTimeUp()
 
-	elseif OreCount == OreCapacity then
-		sendFull()
+		if state_log_progress and Core.time() >= NumberOfCycles * 2 then
+			logProgress()
+			state_log_progress = false
+		end
 	end
 end
 
@@ -190,26 +207,24 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 				OreCount = OreCount + oreNo
 			end
 			say("Base #: " .. ID .. " received " .. oreNo .. " ores from: " .. sourceID .. " current ore count: " .. OreCount)
-			File:write("t:" .. Core.time() .. ",base id:" .. ID .. ",received ores:" .. oreNo .. ",from:" .. sourceID .. ",\n")
+			logProgress()
 		end
 	end
 end
 
 function inititializeRobots()
-	--for i=1, #explorers do
-	print("initializing")
+
 	for i, v in pairs(explorers) do
 		local targetID = explorers[i]
 		Event.emit{targetID=targetID, description=Descriptions.INIT, table=calculatePositionForExplorer(i, #explorers)}
 		say("Base #: " .. ID .. " sending init message to " .. targetID)
-		File:write("t:" .. Core.time() .. ",base id:" .. ID .. ",explorer send init:" .. targetID .. ",\n")
 	end
-	--for i=1, #transporters do
+
 	for i, v in pairs(transporters) do
 		local targetID = transporters[i]
 		Event.emit{targetID=targetID, description=Descriptions.INIT}
 		say("Base #: " .. ID .. " sending init message to " .. targetID)
-		File:write("t:" .. Core.time() .. ",base id:" .. ID .. ",transporter send init:" .. targetID .. ",\n")
+		--File:write("t:" .. Core.time() .. ",base id:" .. ID .. ",transporter send init:" .. targetID .. ",\n")
 		--[[
 		ores = {}
 		table.insert(ores, {x=PositionX+5, y=PositionY+5})
@@ -254,7 +269,7 @@ function calculatePositionForExplorer( index, totalExplorers)
 end
 
 function sendFull()
-	if #sentReturn < #explorers + #transporters then
+	if TableHelper.tablelength(sentReturn) < TableHelper.tablelength(explorers) + TableHelper.tablelength(transporters) then
 
 		local ids = PlanetScanner.get_ids_in_range(CommunicationScope)
 		for i=1, #ids do
@@ -271,14 +286,14 @@ function sendFull()
 end
 
 function sendTimeUp()
-	if #sentReturn < #explorers + #transporters then
+	if TableHelper.tablelength(sentReturn) < TableHelper.tablelength(explorers) + TableHelper.tablelength(transporters) then
 
 		local ids = PlanetScanner.get_ids_in_range(CommunicationScope)
 		for i=1, #ids do
 			local targetID = ids[i]
 			if sentReturn[targetID] == nil then
 				Event.emit{targetID=targetID, description=Descriptions.TIMEUP, table={baseID=ID}}
-				say("Base #: " .. ID .. " sending full message to " .. targetID)
+				say("Base #: " .. ID .. " sending times up message to " .. targetID)
 				if explorers[targetID] ~= nil or transporters[targetID] ~= nil then
 					sentReturn[targetID] = targetID
 				end
@@ -294,10 +309,15 @@ function ShareTable()
 	end
 	robotsTable[ID] = {explorers=explorers, transporters=transporters}
 	Shared.storeTable(Descriptions.ROBOTS, robotsTable)
-	File:write("t:" .. Core.time() .. ",base id:" .. ID .. ",sharedTable,\n")
+end
+
+function logProgress()
+	say("Base #: " .. ID .. " writing progress to file")
+	File:write("t," .. Core.time() .. ",base_id," .. ID .. ",robots," .. TableHelper.tablelength(sentReturn) .. ",total," .. TableHelper.tablelength(explorers) + TableHelper.tablelength(transporters) 
+		.. ",ores," .. OreCount .. ",capacity," .. OreCapacity .. ",\n")
 end
 
 function cleanUp()
-	File:write("t:" .. Core.time() .. ",base id:" .. ID .. ",orecount:" .. OreCount .. ",\n")
+	logProgress()
 	File:close()
 end
