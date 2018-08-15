@@ -33,8 +33,6 @@ Core = require "ranalib_core"
 PlanetScanner = require "modules/planet_scanner"
 Descriptions = require "modules/event_descriptions"
 
-ROBOTS = "robots"
-
 state_set_positions = true
 
 -- Initialization of the agent.
@@ -80,21 +78,24 @@ function InitializeAgent()
 	]]
 	for i = 1, ExplorersNumber do
 		local agentID = Agent.addAgent("agents/explorer.lua", PositionX, PositionY)
-		table.insert(explorers, agentID)
+		--table.insert(explorers, agentID)
+		explorers[agentID] = agentID
 	end
 
 	transporters = {}
 	for i = 1, TransportersNumber do
 		local agentID = Agent.addAgent("agents/transporter.lua", PositionX, PositionY)
-		table.insert(transporters, agentID)
+		--table.insert(transporters, agentID)
+		transporters[agentID] = agentID
 	end
 
-	sentFull = {}
+	sentReturn = {}
 
 	ShareTable()
 end
 
 function checkParameters()
+	--Share default parameters if not set
 	if OreCapacity == "no_value" then
 		OreCapacity = 50
 		Shared.storeNumber(3, OreCapacity)
@@ -171,7 +172,10 @@ val = true
 function TakeStep()
 	if state_set_positions then
 		inititializeRobots()
-	elseif OreCount == OreCapacity or Core.time() >= NumberOfCycles then
+	elseif Core.time() >= NumberOfCycles then
+		sendTimeUp()
+
+	elseif OreCount == OreCapacity then
 		sendFull()
 	end
 end
@@ -192,13 +196,16 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 end
 
 function inititializeRobots()
-	for i=1, #explorers do
+	--for i=1, #explorers do
+	print("initializing")
+	for i, v in pairs(explorers) do
 		local targetID = explorers[i]
 		Event.emit{targetID=targetID, description=Descriptions.INIT, table=calculatePositionForExplorer(i, #explorers)}
 		say("Base #: " .. ID .. " sending init message to " .. targetID)
 		File:write("t:" .. Core.time() .. ",base id:" .. ID .. ",explorer send init:" .. targetID .. ",\n")
 	end
-	for i=1, #transporters do
+	--for i=1, #transporters do
+	for i, v in pairs(transporters) do
 		local targetID = transporters[i]
 		Event.emit{targetID=targetID, description=Descriptions.INIT}
 		say("Base #: " .. ID .. " sending init message to " .. targetID)
@@ -247,27 +254,46 @@ function calculatePositionForExplorer( index, totalExplorers)
 end
 
 function sendFull()
-	if #sentFull < #explorers + #transporters then
+	if #sentReturn < #explorers + #transporters then
 
 		local ids = PlanetScanner.get_ids_in_range(CommunicationScope)
 		for i=1, #ids do
 			local targetID = ids[i]
-			if sentFull[targetID] == nil then
-				sentFull[targetID] = targetID
+			if sentReturn[targetID] == nil then
 				Event.emit{targetID=targetID, description=Descriptions.FULL, table={baseID=ID}}
 				say("Base #: " .. ID .. " sending full message to " .. targetID)
+				if explorers[targetID] ~= nil or transporters[targetID] ~= nil then
+					sentReturn[targetID] = targetID
+				end
+			end
+		end
+	end
+end
+
+function sendTimeUp()
+	if #sentReturn < #explorers + #transporters then
+
+		local ids = PlanetScanner.get_ids_in_range(CommunicationScope)
+		for i=1, #ids do
+			local targetID = ids[i]
+			if sentReturn[targetID] == nil then
+				Event.emit{targetID=targetID, description=Descriptions.TIMEUP, table={baseID=ID}}
+				say("Base #: " .. ID .. " sending full message to " .. targetID)
+				if explorers[targetID] ~= nil or transporters[targetID] ~= nil then
+					sentReturn[targetID] = targetID
+				end
 			end
 		end
 	end
 end
 
 function ShareTable()
-	local robotsTable = Shared.getTable(ROBOTS)
+	local robotsTable = Shared.getTable(Descriptions.ROBOTS)
 	if robotsTable == nil then
 		robotsTable = {}
 	end
 	robotsTable[ID] = {explorers=explorers, transporters=transporters}
-	Shared.storeTable(ROBOTS, robotsTable)
+	Shared.storeTable(Descriptions.ROBOTS, robotsTable)
 	File:write("t:" .. Core.time() .. ",base id:" .. ID .. ",sharedTable,\n")
 end
 

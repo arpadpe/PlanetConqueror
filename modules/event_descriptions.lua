@@ -16,4 +16,6 @@ eventDescriptions.OREPOS = "ore_pos"
 
 eventDescriptions.ROBOTS = "robots"
 
+eventDescriptions.TIMEUP = "time_up"
+
 return eventDescriptions

@@ -84,7 +84,7 @@ function planetMovement.calc_min_dist(pos, goal, limit)
         distBA = pos - goal - ENV_WIDTH
     end
 
-    if math.abs(distAB) < math.abs(distBA) then
+    if math.abs(distAB) <= math.abs(distBA) then
     	return distAB
     else
     	return distBA * -1
@@ -120,21 +120,37 @@ function planetMovement.get_random_pos(range)
 	local random_pos = {}
 
 	if random == 0 then
-		random_pos = {x=PositionX+range % ENV_WIDTH, y=PositionY % ENV_HEIGHT}
+		random_pos = {x=PositionX+range, y=PositionY}
 	elseif random == 1 then
-		random_pos = {x=PositionX+range % ENV_WIDTH, y=PositionY+range % ENV_HEIGHT}
+		random_pos = {x=PositionX+range, y=PositionY+range}
 	elseif random == 2 then
-		random_pos = {x=PositionX % ENV_WIDTH, y=PositionY+range % ENV_HEIGHT}
+		random_pos = {x=PositionX, y=PositionY+range}
 	elseif random == 3 then
-		random_pos = {x=PositionX-range % ENV_WIDTH, y=PositionY+range % ENV_HEIGHT}
+		random_pos = {x=PositionX-range, y=PositionY+range}
 	elseif random == 4 then
-		random_pos = {x=PositionX-range % ENV_WIDTH, y=PositionY % ENV_HEIGHT}
+		random_pos = {x=PositionX-range, y=PositionY}
 	elseif random == 5 then
-		random_pos = {x=PositionX-range % ENV_WIDTH, y=PositionY-range % ENV_HEIGHT}
+		random_pos = {x=PositionX-range, y=PositionY-range}
 	elseif random == 6 then
-		random_pos = {x=PositionX % ENV_WIDTH, y=PositionY-range % ENV_HEIGHT}
+		random_pos = {x=PositionX, y=PositionY-range}
 	elseif random == 7 then
-		random_pos = {x=PositionX+range % ENV_WIDTH, y=PositionY-range % ENV_HEIGHT}
+		random_pos = {x=PositionX+range, y=PositionY-range}
+	end
+
+	if random_pos.x < 0 then
+		random_pos.x = ENV_WIDTH + random_pos.x
+	end
+
+	if random_pos.x > ENV_WIDTH then
+		random_pos.x = random_pos.x % ENV_WIDTH
+	end
+
+	if random_pos.y < 0 then
+		random_pos.y = ENV_HEIGHT + random_pos.y
+	end
+
+	if random_pos.y > ENV_HEIGHT then
+		random_pos.y = random_pos.y % ENV_HEIGHT
 	end
 
 	return random_pos
