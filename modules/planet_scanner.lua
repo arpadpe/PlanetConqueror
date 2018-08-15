@@ -169,10 +169,15 @@ function planetScanner.get_ores_in_range(range)
                 end
 
             end
-
+            
+            if index_list ~= nil then 
             max_index = math.max(unpack(index_list))
-           -- l_print("max index "..max_index)
             index_list = nil
+            else 
+            max_index = 0
+            end
+           -- l_print("max index "..max_index)
+            
             
             
            --l_print("remainings "..(#ore_found - max_index))
@@ -203,6 +208,7 @@ function planetScanner.get_ores_in_range(range)
 
 
             end
+            
             return ore_send
         end
         
