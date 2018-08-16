@@ -71,11 +71,11 @@ function InitializeAgent()
 	if ID == 1 then
 		checkParameters() 
 		Agent.addAgent("painting.lua")
+		
+		os.execute( "mkdir results" )
 	end
 
-	os.execute( "mkdir results" )
-
-	File = io.open("results/simulation_C:" .. OreCapacity .. "_D:" .. OreDensity .. "_E:" 
+	File = io.open("results/simulation_ID:" .. ID.. "_C:" .. OreCapacity .. "_D:" .. OreDensity .. "_E:" 
 		.. RobotEnergy .. "_G:" .. GridSize .. "_I:" .. CommunicationScope .. "_M:" .. CoordinationMode .. "_N:" .. NumberOfBases .. "_P:" 
 		.. PerceptionScope .. "_Q:" .. MotionCost .. "_S:" .. MemorySize .. "_T:" .. NumberOfCycles .. "_W:" .. CarriageCapacity .. "_X:" 
 		.. ExplorersNumber .. "_Y:" .. TransportersNumber .. ".csv", "a")
@@ -255,6 +255,13 @@ function calculatePositionForExplorer( index, totalExplorers)
 			posTable={x=PositionX - PerceptionScope % ENV_WIDTH, y=PositionY - PerceptionScope % ENV_HEIGHT}
 		end
 	end
+
+	if posTable.x < 0 then
+		posTable.x = ENV_WIDTH + posTable.x
+	elseif posTable.y < 0 then
+		posTable.y = ENV_HEIGHT - posTable.y
+	end
+
 	return posTable
 end
 
@@ -278,7 +285,7 @@ function sendFull()
 	            else -- cooperative
 	                ]]
 					Event.emit{targetID=targetID, description=Descriptions.FULL, table={baseID=ID}}
-					say("Base #: " .. ID .. " sending times up message to " .. targetID)
+					say("Base #: " .. ID .. " sending full message to " .. targetID)
 					sentReturn[targetID] = targetID
 
 	            --end

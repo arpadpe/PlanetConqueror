@@ -102,7 +102,15 @@ function TakeStep()
         die()
     end
 
-    if state_init then
+    if state_forward_full and ForwardBaseID ~= BaseID then
+        forwardFullMessage()
+        state_forward_full = false
+
+    elseif state_forward_time_up and ForwardBaseID ~= BaseID then
+        forwardTimeUpMessage()
+        state_forward_time_up = false
+
+    elseif state_init then
         -- wait for base
 
     elseif state_accept_ores then
@@ -196,12 +204,16 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
             state_done = false
             state_wait_new_ores = false
             state_return_to_base = true
+            ForwardBaseID = baseFullId
             say("Transporter #: " .. ID .. " received base full for " .. baseFullId .. " forwarding and returning to base")
+        elseif CoordinationMode == 1 then
+            ForwardBaseID = baseFullId
+            state_forward_full = true
         end
 
     elseif eventDescription == Descriptions.TIMEUP and not (state_return_to_base or state_forward_time_up) then
         local baseTimeUpId = eventTable[Descriptions.BASEID]
-        if baseTimeUpId == BaseID then
+        if baseTimeUpId == BaseID or CoordinationMode == 1 then
             state_forward_time_up = true
             state_moving = false
             state_deposit = false
@@ -211,11 +223,20 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
             state_done = false
             state_wait_new_ores = false
             state_return_to_base = true
+            ForwardBaseID = baseTimeUpId
             say("Transporter #: " .. ID .. " received base time up for " .. baseTimeUpId .. " forwarding and returning to base")
+        elseif CoordinationMode == 1 then
+            ForwardBaseID = baseTimeUpId
+            state_forward_time_up = true
         end
 
     elseif eventDescription == Descriptions.OREPOS then
-        --say("Transporter #: " .. ID .. " received " .. #eventTable ..  " ore positions from " .. sourceID)
+        say("Transporter #: " .. ID .. " received " .. #eventTable ..  " ore positions from " .. sourceID)
+        local baseId = eventTable[Descriptions.BASEID]
+        if baseId ~= BaseID and CoordinationMode == 0 then
+            return
+        end
+
         local oreTable = eventTable
 
         local index = 1
@@ -250,14 +271,14 @@ function determineNextAction()
         if OreCount < CarriageCapacity then
 
             if (PlanetMovement.get_distance_to(Memory[2]) * MotionCost) + PickupCost + (PlanetMovement.get_distance_between(Memory[1], Memory[2]) * MotionCost) <= CurrentEnergy * 0.8 then
-                --say("Transporter #: " .. ID .. " current position " .. PositionX .. " " .. PositionY)
-                --say("Transporter #: " .. ID .. " is going to " .. Memory[2].x .. " " .. Memory[2].y)
+                say("Transporter #: " .. ID .. " current position " .. PositionX .. " " .. PositionY)
+                say("Transporter #: " .. ID .. " is going to " .. Memory[2].x .. " " .. Memory[2].y)
                 state_moving = true
                 state_pick_up = true
                 return
 
             else -- low on energy, return to base
-                --say("Transporter #: " .. ID .. " is low on energy ".. CurrentEnergy .. ", returning to base ")
+                say("Transporter #: " .. ID .. " is low on energy ".. CurrentEnergy .. ", returning to base ")
                 state_deposit = true
                 state_moving = true
                 return
@@ -265,14 +286,14 @@ function determineNextAction()
             end
 
         else -- storage is full, deposit ores
-            --say("Transporter #: " .. ID .. " storage full, returning to base ")
+            say("Transporter #: " .. ID .. " storage full, returning to base ")
             state_deposit = true
             state_moving = true
             return
         end
 
     elseif calculateEnergyToBase() >= CurrentEnergy * 0.7 then -- Running low on energy, return to base
-        --say("Transporter #: " .. ID .. " is low on energy ".. CurrentEnergy .. ", returning to base ")
+        say("Transporter #: " .. ID .. " is low on energy ".. CurrentEnergy .. ", returning to base ")
         state_deposit = true
         state_moving = true
         Memory[2] = {x=PositionX, y=PositionY}
@@ -324,13 +345,13 @@ function handleWaiting()
     Memory[2] = PlanetMovement.get_random_pos(1)
 
     if (PlanetMovement.get_distance_to(Memory[2]) * MotionCost) + (PlanetMovement.get_distance_between(Memory[1], Memory[2]) * MotionCost) <= CurrentEnergy * 0.8 then
-        --say("Transporter #: " .. ID .. " current position " .. PositionX .. " " .. PositionY)
-        --say("Transporter #: " .. ID .. " is going to " .. Memory[2].x .. " " .. Memory[2].y)
+        say("Transporter #: " .. ID .. " current position " .. PositionX .. " " .. PositionY)
+        say("Transporter #: " .. ID .. " is going to " .. Memory[2].x .. " " .. Memory[2].y)
         state_moving = true
         return
 
     else -- low on energy, return to base
-        --say("Transporter #: " .. ID .. " is low on energy ".. CurrentEnergy .. ", returning to base ")
+        say("Transporter #: " .. ID .. " is low on energy ".. CurrentEnergy .. ", returning to base ")
         state_deposit = true
         state_moving = true
         return
@@ -362,7 +383,7 @@ function forwardFullMessage()
 
             else -- cooperative
                 ]]
-                sendMessage(targetID, Descriptions.FULL, {baseID = BaseID}) 
+                sendMessage(targetID, Descriptions.FULL, {baseID = ForwardBaseID}) 
 
             --end
         end
@@ -383,7 +404,7 @@ function forwardTimeUpMessage()
 
             else -- cooperative
                 ]]
-                sendMessage(targetID, Descriptions.TIMEUP, {baseID = BaseID}) 
+                sendMessage(targetID, Descriptions.TIMEUP, {baseID = ForwardBaseID}) 
 
             --end
         end

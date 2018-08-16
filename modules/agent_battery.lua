@@ -3,7 +3,7 @@ local agentBattery={}
 
 function agentBattery.low_battery_sending()
     if (AgentMovement.dist_to_base()*MotionCost + 2) >= CurrentEnergy * 0.7 and not state_low_battery then -- Running low on energy, return to base
-        say("Explorer #: " .. ID .. " is low on energy, returning to base "..CurrentEnergy)
+        --say("Explorer #: " .. ID .. " is low on energy, returning to base "..CurrentEnergy)
   
         PositionX = math.floor(PositionX)
         PositionY = math.floor(PositionY)
@@ -28,7 +28,7 @@ end
 
 function agentBattery.low_battery_scanning()
     if (AgentMovement.dist_to_base()*MotionCost + 1 + PerceptionScope) >= CurrentEnergy * 0.7 and not state_low_battery then -- Running low on energy, return to base
-        say("Explorer #: " .. ID .. " is low on energy, returning to base "..CurrentEnergy)
+        --say("Explorer #: " .. ID .. " is low on energy, returning to base "..CurrentEnergy)
   
         PositionX = math.floor(PositionX)
         PositionY = math.floor(PositionY)
@@ -52,7 +52,7 @@ end
 
 function agentBattery.low_battery_moving()
     if (AgentMovement.dist_to_base()*MotionCost + 1) >= CurrentEnergy * 0.7 and not state_low_battery then -- Running low on energy, return to base
-        say("Explorer #: " .. ID .. " is low on energy, returning to base "..CurrentEnergy)
+        --say("Explorer #: " .. ID .. " is low on energy, returning to base "..CurrentEnergy)
   
         PositionX = math.floor(PositionX)
         PositionY = math.floor(PositionY)
