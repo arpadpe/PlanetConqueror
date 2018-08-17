@@ -170,7 +170,7 @@ function planetScanner.get_ores_in_range(range)
 
             end
             
-            if index_list ~= nil then 
+            if index_list ~= nil and #index_list ~=0 then 
             max_index = math.max(unpack(index_list))
             index_list = nil
             else 
