@@ -173,7 +173,11 @@ function checkParameters()
 	end
 end
 
+count = 0
+
 function TakeStep()
+
+	count = count + 1
 
 	--Initialize Robots state
 	if state_set_positions then
@@ -184,7 +188,7 @@ function TakeStep()
 		sendFull()
 		
 	--Time up state
-	elseif Core.time() >= NumberOfCycles then
+	elseif count >= NumberOfCycles then
 		sendTimeUp()
 
 	end
@@ -323,6 +327,7 @@ function ShareTable()
 end
 
 function cleanUp()
+	say(count)
 	if TimeFull ~= nil then
 		File:write(Shared.getNumber(2) .. "," .. TimeFull .. "," .. ID .. "," .. TableHelper.tablelength(ownRobots) .. "," .. TableHelper.tablelength(explorers) + TableHelper.tablelength(transporters) .. "," .. OreCount .. "," .. OreCapacity .. "\n")
 	else
