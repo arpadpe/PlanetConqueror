@@ -39,7 +39,7 @@ waiting_answer = false
 total_number_packages = 0
 package_accepted = false 
 count_packages = 0 
-
+state_forward_time_up = false
 
 trans_contacted = {}
 
@@ -79,7 +79,7 @@ function initializeAgent()
     --StepMultiple = 10000
     DestinationX = PositionX 
     DestinationY = PositionY
-    -- we suppose that we are born in the base so our initial position == base postion 
+
     table.insert(memory_S, {x = PositionX, y =PositionY}) -- save base position 
 
 end
@@ -97,6 +97,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
         if baseFullId == BaseID then
             state_forward_full = true
             say("Explorer #: " .. ID .. " received base full for " .. baseFullId .. " forwarding and returning to base")
+            ForwardBaseID = baseFullId
         elseif CoordinationMode == 1 then
             state_forward_full = true
             ForwardBaseID = baseFullId
@@ -104,14 +105,14 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
     elseif eventDescription == Descriptions.TIMEUP and not stay_home then
         local baseTimeUpId = eventTable[Descriptions.BASEID]
         if baseTimeUpId == BaseID then
-            state_forward_full = true
-            say("Explorer #: " .. ID .. " received base full for " .. baseTimeUpId .. " forwarding and returning to base")
+            state_forward_time_up = true
+            say("Explorer #: " .. ID .. " received tiem up for " .. baseTimeUpId .. " forwarding and returning to base")
+            ForwardBaseID = baseTimeUpId
         elseif CoordinationMode == 1 then
-            state_forward_full = true
+            state_forward_time_up = true
             ForwardBaseID = baseTimeUpId
         end
-            -- TODO: Add logic to handle coordination mode
-       -- end
+
     elseif eventDescription == Descriptions.ACCEPT then 
         trans_working = true
         package_accepted = true 
@@ -143,19 +144,28 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 end
 
 function takeStep()
-
+--[[
     if state_forward_full and ForwardBaseID ~= BaseID then
         forwardMessage()
         state_forward_full = false
 
 
-    elseif state_forward_full and not stay_home then 
+    else]]if state_forward_full and not stay_home then 
         forwardMessage()
         
         table.insert(memory_S, 2, {x = memory_S[1].x, y = memory_S[1].y})
         stay_home = true 
         state_moving = true 
         state_forward_full = false 
+        state_initial = false
+
+    elseif state_forward_time_up and not stay_home then 
+        forwardTimeUpMessage()
+        
+        table.insert(memory_S, 2, {x = memory_S[1].x, y = memory_S[1].y})
+        stay_home = true 
+        state_moving = true 
+        state_forward_time_up = false 
         state_initial = false
      -------------------------------------------------------------------------------------------------------
      --INITIAL-----------------------------------------------------------------------------------------------
@@ -188,10 +198,6 @@ function takeStep()
      -------------------------------------------------------------------------------------------------------
 
     elseif state_moving then
-       -- l_print("state moving")
-        --we suppose that each time that we start a new moving cycle (after finish sending all the messages)
-        --in our memory only have the base position, we have use table.remove, 
-        --l_print("START MOVEMENT")
         PositionX = math.floor(PositionX)
         PositionY = math.floor(PositionY)
         
@@ -202,24 +208,22 @@ function takeStep()
             new_position = AgentMovement.get_new_position()
             xx = new_position.x 
             yy = new_position.y 
-           -- l_print("new x "..xx.." new y "..yy)
+
             table.insert(memory_S,2, {x = xx, y = yy})
  
         else 
             
-            -- if we are not in the desired position
+
             if AgentBattery.low_battery_moving() then 
-                -- Nothin
+                -- Check if the agent have enough battery
         
             elseif PositionX ~= memory_S[2].x or PositionY ~= memory_S[2].y then
 
                 if not Moving then 
                     delta_x = AgentMovement.get_delta_x(PositionX, memory_S[2].x)
                     delta_y = AgentMovement.get_delta_y(PositionY, memory_S[2].y)
-                   -- 
-                  -- say(" moving Current position "..PositionX.." "..PositionY)  
-                  -- say(" goal position "..memory_S[2].x.." "..memory_S[2].y)
-                    if AgentMovement.advance_position(delta_x,delta_y) then --returns true if move success                 
+
+                    if AgentMovement.advance_position(delta_x,delta_y) then                 
                         CurrentEnergy = CurrentEnergy - MotionCost
                     end
                 end 
@@ -240,7 +244,7 @@ function takeStep()
                     state_low_battery = false
                     direction_base = true
                 else
-                --l_print("final x "..PositionX.." final y "..PositionY)
+
                     memory_S[2] = nil
                     state_moving = false
               --  say("Explorer #: " .. ID .. " has reached the new position ")
@@ -267,7 +271,7 @@ function takeStep()
     elseif state_scanning then 
        -- say("Explorer #: " .. ID .. " start scanning ")
         if AgentBattery.low_battery_scanning() then 
-            --nothing
+            --Check battery level
         else 
             ore_table = PlanetScanner.get_ores_in_range(PerceptionScope)
             CurrentEnergy = CurrentEnergy - PerceptionScope
@@ -279,9 +283,9 @@ function takeStep()
 
             else -- #ore_found ~= 0 then
                 people_ID_table =  get_transporters()
-                if (#people_ID_table - #trans_contacted) > 0  then -- I have a list and tranporters close to me (excluding me)
+                if (#people_ID_table - #trans_contacted) > 0  then 
                     state_sending = true
-                else -- no transporters in my communication scope
+                else 
                     state_waiting = true 
                 end
                 state_scanning = false
@@ -295,14 +299,12 @@ function takeStep()
     elseif state_increase_scope then
         --l_print("Explorer #: " .. ID .. " is increasing scope")
         if MemorySize > (PerceptionScope*PerceptionScope/2) then
-            --say("Large memory")
             if (PerceptionScope/MotionCost) > 1.5 then 
               --  say("Explorer #: " .. ID .. " decided to move instead increase scope")
                 state_moving = true
                 state_increase_scope = false
             else
                 PerceptionScope = PerceptionScope + 1
-               -- say("let's increase scope")
                 if PerceptionScope > GridSize/100 then -- in this case we keep the size of PErceptionScope
                     state_moving = true
                  --   say("Explorer #: " .. ID .. " has max scope so he moves")
@@ -313,7 +315,6 @@ function takeStep()
                 state_increase_scope = false
             end
         else 
-             --say ("small memory")
             if (MotionCost/PerceptionScope) > 1.5 then 
                 PerceptionScope = PerceptionScope + 1
               --  say("Explorer #: " .. ID .. " decided to move instead increase scope")
@@ -339,20 +340,19 @@ function takeStep()
     -------------------------------------------------------------------------------------------------------
     elseif state_sending then
        -- say("Explorer #: " .. ID .. "is in state_sending")
-        --- ADD BATTERY CONTROL
+
         if AgentBattery.low_battery_sending() then 
-            --nothing
+            -- Check battery level
         elseif (#people_ID_table - #trans_contacted)  <= 0 and not waiting_answer then
             state_sending = false
             state_waiting = true 
         elseif not waiting_answer then
-           -- say("trans_contacted size "..#trans_contacted)
-            --say("SENDING POSITIONS TO TRANSPORTERS")
+
             if #trans_contacted == 0 then 
     
                 targetID = people_ID_table[1]
                 table.insert(trans_contacted, targetID)
-                --say("set target ID "..targetID)
+
             else
                 differences = 0 
                 for i = 1, #people_ID_table  do  
@@ -382,17 +382,16 @@ function takeStep()
         if waiting_answer then
           -- say("Explorer # "..ID.." is waiting an answer")
             NumberCyclesWaitingAnswer = NumberCyclesWaitingAnswer + 1
-            if NumberCyclesWaitingAnswer > math.floor(1.5*CommunicationScope) + 2 then -- we have waited enough 
+            if NumberCyclesWaitingAnswer > math.floor(1.5*CommunicationScope) + 2 then 
                 say("Explorer # "..ID.." was IGNORED")
                 waiting_answer = false 
                 NumberCyclesWaitingAnswer = 0
             end
         end
         
-        if package_accepted  then 
+        if package_accepted  then --remove from memory
 
-            for i = 1, #ore_table do -- clean ore position table 
-                --l_print("ORE IN STATE SCANNING "..i.." position x "..ore_table[i].x.." position y "..ore_table[i].y)
+            for i = 1, #ore_table do 
                 if last_package_sent then
                     ore_send[i]=nil
                 end
@@ -409,17 +408,17 @@ function takeStep()
         distance_to_base = AgentMovement.dist_to_base()
         NumberCyclesWaiting = NumberCyclesWaiting + 1
         people_ID_table =  get_transporters()
-        if (#people_ID_table - #trans_contacted) > 0 then -- I have a list and tranporters close to me (excluding me)
+        if (#people_ID_table - #trans_contacted) > 0 then 
             state_sending = true
             state_waiting = false
             NumberCyclesWaiting = 0
         end
         if NumberCyclesWaiting >= distance_to_base and not trans_working then 
             say("Explorer #: " .. ID .. " has waited enough, it moves")
-            state_moving = true -- ¿ Maybe it's useful to do a clever movement ...  
+            state_moving = true 
             state_sending = false 
             NumberCyclesWaiting = 0
-            for i = 1, #ore_table do -- clean ore position table 
+            for i = 1, #ore_table do 
                 ore_send[i]=nil
             end
         end
@@ -440,13 +439,6 @@ end
 
 function forwardMessage()
     local people = PlanetScanner.get_ids_in_range(CommunicationScope)
-
-       --[[ for i=#people,1,-1  do
-            if robotsTable[BaseID].transporters[i] == nil and robotsTable[BaseID].explorers[i] == nil then
-                table.remove(people, i)
-            end
-        end]]
-
     for i=1, #people do
         local targetID = people[i]
         if targetID ~= ID then
@@ -454,7 +446,15 @@ function forwardMessage()
         end
     end
 end
-
+function forwardTimeUpMessage()
+    local ids = PlanetScanner.get_ids_in_range(CommunicationScope)
+    for i=1, #ids do
+        local targetID = ids[i]
+        if targetID ~= ID then
+                sendMessage(targetID, Descriptions.TIMEUP, {baseID = ForwardBaseID}) 
+        end
+    end
+end
 
 function sendMessage(targetID, eventDescription, eventTable)
     CurrentEnergy = CurrentEnergy - MessageCost
@@ -465,23 +465,5 @@ end
 
 function get_transporters()
     people = PlanetScanner.get_ids_in_range(CommunicationScope)
-    --[[if CoordinationMode == 1 then -- Cooperative 
-        for i=#people,1,-1  do
-            for k, v in pairs(robotsTable) do 
-      
-                if robotsTable[k].transporters[i] == nil then
-                    table.remove(people, i)
-                end
-            end
-        end
-
-    elseif CoordinationMode == 0 then --Competitive 
-        for i=#people,1,-1  do
-            if robotsTable[BaseID].transporters[i] == nil then
-                table.remove(people, i)
-            end
-        end
-    end ]]
-
     return people
 end
