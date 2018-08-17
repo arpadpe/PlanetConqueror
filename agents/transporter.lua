@@ -89,10 +89,12 @@ function InitializeAgent()
     Memory = {}     
 end
 
+-- to handle the initialize collision detection
 val = true
 
 function TakeStep()
 
+    -- to handle the initialize collision detection
     if val then
         Move.to{x=PositionX + 1, y=PositionY}
         val = false
@@ -102,10 +104,12 @@ function TakeStep()
         die()
     end
 
+    -- forward event for foe base
     if state_forward_full and ForwardBaseID ~= BaseID then
         forwardFullMessage()
         state_forward_full = false
 
+    -- forward event for foe base
     elseif state_forward_time_up and ForwardBaseID ~= BaseID then
         forwardTimeUpMessage()
         state_forward_time_up = false
@@ -113,11 +117,13 @@ function TakeStep()
     elseif state_init then
         -- wait for base
 
+    -- accept or positions
     elseif state_accept_ores then
         sendAcceptMessage()
         state_accept_ores = false
         determineNextAction()
 
+    -- move to a new position
     elseif state_moving and Memory[2] ~= nil then
         if not Moving then
             move()
@@ -126,10 +132,9 @@ function TakeStep()
             shiftMemory()
             state_moving = false
             Moving = false
-        else
-            --print("Not there yet")
         end
 
+    -- forward event for own base
     elseif state_forward_full then
         forwardFullMessage()
         Memory[2] = Memory[1]
@@ -143,6 +148,7 @@ function TakeStep()
         state_wait_new_ores = false
         state_return_to_base = true
 
+    -- forward event for own base
     elseif state_forward_time_up then
         forwardTimeUpMessage()
         Memory[2] = Memory[1]
@@ -156,6 +162,7 @@ function TakeStep()
         state_wait_new_ores = false
         state_return_to_base = true
     
+    -- deposit ores to base
     elseif state_deposit then
         depositOres()
         state_deposit = false
@@ -164,11 +171,13 @@ function TakeStep()
             determineNextAction()
         end
     
+    -- collect ore from position
     elseif state_pick_up then
         pickUpOre()
         state_pick_up = false
         determineNextAction()
 
+    -- signal done to explorer
     elseif state_done then
         sendDoneMessage()
         state_done = false
@@ -177,6 +186,7 @@ function TakeStep()
     elseif state_return_to_base then
         -- Do nothing
 
+    -- check if explorer isin range
     elseif state_wait_new_ores then
         handleWaiting()
 
@@ -185,16 +195,19 @@ end
 
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 
-
+    -- base initialization
     if eventDescription == Descriptions.INIT then
         BaseID = sourceID
         state_init = false
         say("Transporter #: " .. ID .. " received init from " .. sourceID)
         table.insert(Memory, {x=sourceX, y=sourceY})
         robotsTable = Shared.getTable(Descriptions.ROBOTS)
+
+    -- base full event
 	elseif eventDescription == Descriptions.FULL and not (state_return_to_base or state_forward_full) then
         local baseFullId = eventTable[Descriptions.BASEID]
         if baseFullId == BaseID then
+            -- related base, forward and return
             state_forward_full = true
             state_moving = false
             state_deposit = false
@@ -206,14 +219,18 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
             state_return_to_base = true
             ForwardBaseID = baseFullId
             say("Transporter #: " .. ID .. " received base full for " .. baseFullId .. " forwarding and returning to base")
+
         elseif CoordinationMode == 1 then
+            -- unrelated base, forward for cooperation
             ForwardBaseID = baseFullId
             state_forward_full = true
         end
 
+    -- base time up event
     elseif eventDescription == Descriptions.TIMEUP and not (state_return_to_base or state_forward_time_up) then
         local baseTimeUpId = eventTable[Descriptions.BASEID]
         if baseTimeUpId == BaseID or CoordinationMode == 1 then
+            -- related base, forward and return
             state_forward_time_up = true
             state_moving = false
             state_deposit = false
@@ -225,22 +242,26 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
             state_return_to_base = true
             ForwardBaseID = baseTimeUpId
             say("Transporter #: " .. ID .. " received base time up for " .. baseTimeUpId .. " forwarding and returning to base")
+
         elseif CoordinationMode == 1 then
+            -- unrelated base, forward for cooperation
             ForwardBaseID = baseTimeUpId
             state_forward_time_up = true
         end
 
+    -- new ore positions
     elseif eventDescription == Descriptions.OREPOS then
         say("Transporter #: " .. ID .. " received " .. #eventTable ..  " ore positions from " .. sourceID)
         local baseId = eventTable[Descriptions.BASEID]
         if baseId ~= BaseID and CoordinationMode == 0 then
+            -- unrelated explorer, do nothing
             return
         end
 
         local oreTable = eventTable
-
         local index = 1
 
+        -- check memory availability
         for i = 2, #Memory do
             if Memory[i] == nil then
                 index = i - 1
@@ -251,7 +272,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
         local freeSpace = MemorySize - index
 
         if #oreTable <= freeSpace then
-
+            -- can store in memory, save and accept
             for j = 1, #oreTable do
                 Memory[index] = oreTable[j]
                 index = index + 1
@@ -266,9 +287,11 @@ end
 
 function determineNextAction()
     
+    -- only move if the next destination is set
     if Memory[2] ~= nil then
 
         if OreCount < CarriageCapacity then
+            --there is space in capacity
 
             if (PlanetMovement.get_distance_to(Memory[2]) * MotionCost) + PickupCost + (PlanetMovement.get_distance_between(Memory[1], Memory[2]) * MotionCost) <= CurrentEnergy * 0.8 then
                 say("Transporter #: " .. ID .. " current position " .. PositionX .. " " .. PositionY)
@@ -296,20 +319,25 @@ function determineNextAction()
         say("Transporter #: " .. ID .. " is low on energy ".. CurrentEnergy .. ", returning to base ")
         state_deposit = true
         state_moving = true
+        --recharge at base and return to current position
         Memory[2] = {x=PositionX, y=PositionY}
         return
     end
 
     if OreCount == CarriageCapacity then -- storage is full, deposit ores
-        --say("Transporter #: " .. ID .. " storage full, returning to base ")
+        say("Transporter #: " .. ID .. " storage full, returning to base ")
         state_deposit = true
         state_moving = true
+
+        --deposit ores to base and return to current position
+        Memory[2] = {x=PositionX, y=PositionY}
         return
     end
 
-    --say("Transporter #: " .. ID .. " done, waiting for new ore positions")
+    say("Transporter #: " .. ID .. " done, waiting for new ore positions")
     if AcceptID ~= nil then
         state_done = true
+        --send done event
     else
         state_wait_new_ores = true
     end
@@ -322,22 +350,13 @@ function handleWaiting()
 
     for i=1, #ids do
 
-        --[[
-        if CoordinationMode == 0 then -- competitive mode
+        for k, v in pairs(robotsTable) do
 
-            if robotsTable[BaseID].explorers[i] ~= nil then
-                return
+            -- do nothing if explorer is in range
+            if v.explorers[i] ~= nil then 
+                return 
             end
-
-        else -- cooperative
-        ]]
-            for k, v in pairs(robotsTable) do
-                if v.explorers[i] ~= nil then 
-                    return 
-                end
-            end
-
-        --end
+        end
 
     end
 
@@ -374,18 +393,8 @@ function forwardFullMessage()
     for i=1, #ids do
         local targetID = ids[i]
         if targetID ~= ID then
-            --[[
-            if CoordinationMode == 0 then -- competitive mode
+            sendMessage(targetID, Descriptions.FULL, {baseID = ForwardBaseID}) 
 
-                if robotsTable[BaseID].explorers[targetID] ~= nil or robotsTable[BaseID].transporters[targetID] then
-                    sendMessage(targetID, Descriptions.FULL, {baseID = BaseID})
-                end
-
-            else -- cooperative
-                ]]
-                sendMessage(targetID, Descriptions.FULL, {baseID = ForwardBaseID}) 
-
-            --end
         end
     end
 end
@@ -395,18 +404,8 @@ function forwardTimeUpMessage()
     for i=1, #ids do
         local targetID = ids[i]
         if targetID ~= ID then
-            --[[
-            if CoordinationMode == 0 then -- competitive mode
+            sendMessage(targetID, Descriptions.TIMEUP, {baseID = ForwardBaseID}) 
 
-                if robotsTable[BaseID].explorers[targetID] ~= nil or robotsTable[BaseID].transporters[targetID] then
-                    sendMessage(targetID, Descriptions.TIMEUP, {baseID = BaseID})
-                end
-
-            else -- cooperative
-                ]]
-                sendMessage(targetID, Descriptions.TIMEUP, {baseID = ForwardBaseID}) 
-
-            --end
         end
     end
 end
@@ -453,6 +452,7 @@ function shiftMemory()
 end
 
 function move()
+    -- move to the next position
     PositionX = math.floor(PositionX)
     PositionY = math.floor(PositionY)
 

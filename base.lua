@@ -80,14 +80,14 @@ function InitializeAgent()
 		.. PerceptionScope .. "_Q:" .. MotionCost .. "_S:" .. MemorySize .. "_T:" .. NumberOfCycles .. "_W:" .. CarriageCapacity .. "_X:" 
 		.. ExplorersNumber .. "_Y:" .. TransportersNumber .. ".csv", "a")
 
+	--Initialize Explorers
 	explorers = {}
-	--[[
-	]]
 	for i = 1, ExplorersNumber do
 		local agentID = Agent.addAgent("agents/explorer.lua", PositionX, PositionY)
 		explorers[agentID] = agentID
 	end
 
+	--Initialize Transporters
 	transporters = {}
 	for i = 1, TransportersNumber do
 		local agentID = Agent.addAgent("agents/transporter.lua", PositionX, PositionY)
@@ -95,6 +95,7 @@ function InitializeAgent()
 	end
 
 	sentReturn = {}
+	ownRobots = {}
 
 	ShareTable()
 end
@@ -172,35 +173,33 @@ function checkParameters()
 	end
 end
 
-val = true
-
 function TakeStep()
+
+	--Initialize Robots state
 	if state_set_positions then
 		inititializeRobots()
 
+	--Base full state
 	elseif OreCount == OreCapacity and Core.time() < NumberOfCycles then
 		sendFull()
-
-		if state_log_progress then
-			state_log_progress = false
-		end
 		
-
+	--Time up state
 	elseif Core.time() >= NumberOfCycles then
 		sendTimeUp()
 
-		if state_log_progress and Core.time() >= NumberOfCycles * 2 then
-			state_log_progress = false
-		end
 	end
 end
 
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)	
+
+	--handle the deposition of ores
 	if eventDescription == Descriptions.ORE then
 		if OreCount < OreCapacity then
 			local oreNo = eventTable[Descriptions.ORE]
 			if OreCount + oreNo > OreCapacity then
 				OreCount = OreCapacity
+
+				--save current time for analysis
 				TimeFull = Core.time()
 			else
 				OreCount = OreCount + oreNo
@@ -211,6 +210,8 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 end
 
 function inititializeRobots()
+
+	--initialize the agents
 
 	for i, v in pairs(explorers) do
 		local targetID = v
@@ -227,6 +228,8 @@ function inititializeRobots()
 end
 
 function calculatePositionForExplorer( index, totalExplorers)
+	--calculate the initial positions of the explorers based on the number of explorers and the Perception scope
+
 	local posTable = {}
 	if totalExplorers == 1 then
 		posTable={x=PositionX, y=PositionY}
@@ -256,6 +259,7 @@ function calculatePositionForExplorer( index, totalExplorers)
 		end
 	end
 
+	-- prevent negative positions
 	if posTable.x < 0 then
 		posTable.x = ENV_WIDTH + posTable.x
 	elseif posTable.y < 0 then
@@ -273,22 +277,15 @@ function sendFull()
 			local targetID = ids[i]
 			if sentReturn[targetID] == nil then
 
-				--[[
-				if CoordinationMode == 0 then -- competitive mode
+				Event.emit{targetID=targetID, description=Descriptions.FULL, table={baseID=ID}}
+				say("Base #: " .. ID .. " sending full message to " .. targetID)
+				sentReturn[targetID] = targetID
 
-					if explorers[targetID] ~= nil or transporters[targetID] ~= nil then
-						Event.emit{targetID=targetID, description=Descriptions.FULL, table={baseID=ID}}
-						say("Base #: " .. ID .. " sending times up message to " .. targetID)
-						sentReturn[targetID] = targetID
-					end
+				-- if a related robot receives the event, it is believed to have returned
+				if explorers[targetID] ~= nil or transporters[targetID] ~= nil then
+					ownRobots[targetID] = targetID
+				end
 
-	            else -- cooperative
-	                ]]
-					Event.emit{targetID=targetID, description=Descriptions.FULL, table={baseID=ID}}
-					say("Base #: " .. ID .. " sending full message to " .. targetID)
-					sentReturn[targetID] = targetID
-
-	            --end
 			end
 		end
 	end
@@ -302,22 +299,14 @@ function sendTimeUp()
 			local targetID = ids[i]
 			if sentReturn[targetID] == nil then
 
-				--[[
-				if CoordinationMode == 0 then -- competitive mode
+				Event.emit{targetID=targetID, description=Descriptions.TIMEUP, table={baseID=ID}}
+				say("Base #: " .. ID .. " sending times up message to " .. targetID)
+				sentReturn[targetID] = targetID
 
-					if explorers[targetID] ~= nil or transporters[targetID] ~= nil then
-						Event.emit{targetID=targetID, description=Descriptions.TIMEUP, table={baseID=ID}}
-						say("Base #: " .. ID .. " sending times up message to " .. targetID)
-						sentReturn[targetID] = targetID
-					end
-
-	            else -- cooperative
-	                ]]
-					Event.emit{targetID=targetID, description=Descriptions.TIMEUP, table={baseID=ID}}
-					say("Base #: " .. ID .. " sending times up message to " .. targetID)
-					sentReturn[targetID] = targetID
-
-	            --end
+				-- if a related robot receives the event, it is believed to have returned
+				if explorers[targetID] ~= nil or transporters[targetID] ~= nil then
+					ownRobots[targetID] = targetID
+				end
 
 			end
 		end
@@ -333,17 +322,11 @@ function ShareTable()
 	Shared.storeTable(Descriptions.ROBOTS, robotsTable)
 end
 
-function logProgress()
-	say("Base #: " .. ID .. " writing progress to file")
-	
-	
-end
-
 function cleanUp()
 	if TimeFull ~= nil then
-		File:write(Shared.getNumber(2) .. "," .. TimeFull .. "," .. ID .. "," .. TableHelper.tablelength(sentReturn) .. "," .. TableHelper.tablelength(explorers) + TableHelper.tablelength(transporters) .. "," .. OreCount .. "," .. OreCapacity .. "\n")
+		File:write(Shared.getNumber(2) .. "," .. TimeFull .. "," .. ID .. "," .. TableHelper.tablelength(ownRobots) .. "," .. TableHelper.tablelength(explorers) + TableHelper.tablelength(transporters) .. "," .. OreCount .. "," .. OreCapacity .. "\n")
 	else
-		File:write(Shared.getNumber(2) .. "," .. Core.time() .. "," .. ID .. "," .. TableHelper.tablelength(sentReturn) .. "," .. TableHelper.tablelength(explorers) + TableHelper.tablelength(transporters) .. "," .. OreCount .. "," .. OreCapacity .. "\n")
+		File:write(Shared.getNumber(2) .. "," .. Core.time() .. "," .. ID .. "," .. TableHelper.tablelength(ownRobots) .. "," .. TableHelper.tablelength(explorers) + TableHelper.tablelength(transporters) .. "," .. OreCount .. "," .. OreCapacity .. "\n")
 	end
 	File:close()
 end
